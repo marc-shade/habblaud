@@ -8,6 +8,8 @@ The coordinator uses Node 22.12 or newer. Each remote node needs a compatible No
 
 Each inventory entry requires a unique `name`. The optional `node` field accepts an absolute executable path. The optional `claudeHome`, `codexHome`, `agyLog` and `agyBrain` fields accept absolute paths on that node. Otherwise the collector uses the node's home and its native CLI environment. The agy defaults are the Claude log directory's `agy-hook-bridge.jsonl` and `~/.gemini/antigravity-cli/brain`.
 
+A peer can specify an `sshFallbackInterface` map keyed by coordinator name. On mbp-max, the ai-laptop entry uses `en0` as its alternate route. The first connection uses the normal SSH route. After a failed attempt the collector alternates routes, and after a working connection drops it retries the last successful route first. Both routes require the same trusted SSH host key.
+
 The coordinator streams a bundled collector over each SSH connection. The collector runs in memory, reads native files locally and sends session metadata over SSH. The projection includes the provider, project basename, status, activity category, counters and hashed identifiers. The service listens on loopback and exposes the office canvas, snapshots, source health and a live event stream. Stop it with Ctrl+C. No peer package installation or hook registration is required.
 
 ## Interpreting agy activity
@@ -16,10 +18,10 @@ The bridge reports recorded lifecycle events. A completed turn appears idle and 
 
 ## Verification on November 25, 2026
 
-The production build, TypeScript and translation checks exited 0. Both fleet regression tests passed. A live browser check of `npm run fleet -- --local mbp-max` showed five connected hosts, six project rooms and 14 observed sessions across Claude Code, Codex and agy. The check matched a labeled agy turn to its conversation hash, focused its character, returned to the overview and received HTTP 405 for a permission write. The headless browser reported zero uncaught page errors during the check.
+The production build and TypeScript checks exited 0. The full suite passed 1,884 tests with zero failures. Two Windows-only checks for executable discovery and Git Bash selection were skipped on macOS. The World theme regression explicitly starts with no theme, switches to Christmas and verifies both transmitted values.
 
-Fedora's timestamp adapter recognized a real previously recorded agy session when evaluated at its recording time. A fresh Fedora agy turn requested sign-in. ai-laptop timed out at its configured SSH address and the viewer showed it offline. The full regression suite recorded 1,883 passes, two skips and one failure. The same World theme test timed out on the unmodified v1.0.3 checkout.
+A live browser check against port 4749 required all six nodes online and all three sources readable on each. It saw 17 sessions in ten rooms, matched a labeled agy turn on mbp-max, focused its character and returned to the overview. A permission write returned HTTP 405. The browser reported zero uncaught page errors. The live ai-laptop SSH process used the configured en0 interface and strict host-key checking. Fedora's timestamp reader also recognized an actual prior conversation during historical replay.
 
 ## Gaps / not covered
 
-The passive Codex reader can lag tool execution and miss approval waits. Recent agy file activity cannot establish whether a process is still running. Hashes are stable identifiers, not anonymization. Anyone with access to the coordinator's loopback interface can read the displayed project names and activity. The fleet viewer has no approval, messaging or command endpoints.
+A new Fedora agy turn still needs completion of the native Google OAuth prompt. Source readability is independently verified. The passive Codex reader can lag tool execution and miss approval waits. Recent agy file activity cannot establish whether a process is still running. Hashes are stable identifiers, not anonymization. Anyone with access to the coordinator's loopback interface can read the displayed project names and activity. The fleet viewer has no approval, messaging or command endpoints.

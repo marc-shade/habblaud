@@ -17,6 +17,7 @@ interface Target {
   codexHome?: string;
   agyLog?: string;
   agyBrain?: string;
+  sshFallbackInterface?: Record<string, string>;
 }
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const argv = parseArgs({
@@ -31,6 +32,9 @@ if (
     (t) =>
       !t ||
       !validName(t.name) ||
+      (t.sshFallbackInterface !== undefined &&
+        (!t.sshFallbackInterface || typeof t.sshFallbackInterface !== 'object' || Array.isArray(t.sshFallbackInterface) ||
+          !Object.entries(t.sshFallbackInterface).every(([host, iface]) => validName(host) && validName(iface)))) ||
       (t.node !== undefined && !/^\/[A-Za-z0-9_./+-]+$/.test(t.node)) ||
       [t.claudeHome, t.codexHome, t.agyLog, t.agyBrain].some(
         (v) => v !== undefined && (typeof v !== 'string' || !v.startsWith('/')),
@@ -59,18 +63,22 @@ function publish() {
   }
 }
 
-function connect(target: Target, failures = 0) {
+const coordinator = argv.local ?? hostname().split('.')[0];
+
+function connect(target: Target, failures = 0, tryInterface = false) {
   if (stopping) return;
   const peer = peers.get(target.name)!;
-  const { name, node, ...paths } = target;
+  const { name, node, sshFallbackInterface, ...paths } = target;
+  const iface = sshFallbackInterface?.[coordinator];
   const encoded = Buffer.from(JSON.stringify(paths)).toString('base64');
-  const local = name === (argv.local ?? hostname().split('.')[0]);
+  const local = name === coordinator;
   const binary = node || (local ? process.execPath : 'node');
   const command = [binary, '--input-type=module', '-', encoded];
   const child = local
     ? spawn(binary, command.slice(1))
     : spawn('ssh', [
         '-T',
+        ...(tryInterface && iface ? ['-B', iface] : []),
         '-o',
         'StrictHostKeyChecking=yes',
         '-o',
@@ -125,7 +133,7 @@ function connect(target: Target, failures = 0) {
       const timer = setTimeout(
         () => {
           retries.delete(timer);
-          connect(target, next);
+          connect(target, next, healthy ? tryInterface : !tryInterface);
         },
         Math.min(30000, 1000 * 2 ** next),
       );

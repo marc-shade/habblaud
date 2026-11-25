@@ -4,5 +4,5 @@
   { "name": "macmini" },
   { "name": "fedora" },
   { "name": "ai-lab" },
-  { "name": "ai-laptop" }
+  { "name": "ai-laptop", "sshFallbackInterface": { "mbp-max": "en0" } }
 ]

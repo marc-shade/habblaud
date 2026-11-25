@@ -402,8 +402,11 @@ describe('BuildingUplink: conexão e remessas', () => {
   });
 
   it('o tema e as opções do jogador: tema trocado manda de novo; tokens só com tokensVisible', async () => {
-    const h = await start({ tokensVisible: false });
+    const h = await start({ start: false, tokensVisible: false });
+    h.store.setTheme('none');
+    h.uplink.start();
     await waitFor(() => h.world.ws.uplinks.length === 1, 'primeira');
+    expect(h.world.ws.uplinks[0].uplink.theme).toBe('none');
     expect(h.world.ws.uplinks[0].uplink.tokens).toBeUndefined();
     h.store.setTheme('christmas');
     h.uplink.themeChanged();
