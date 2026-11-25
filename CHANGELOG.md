@@ -10,6 +10,8 @@ do meio (0.**3**.0).
 
 ## [Não lançado]
 
+- A visualização local da frota reúne Claude Code, Codex e agy dos nós macOS e Linux por SSH em um escritório somente leitura.
+
 ## [1.0.3] - 2026-10-16
 
 ### Corrigido

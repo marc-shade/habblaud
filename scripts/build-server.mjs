@@ -4,8 +4,8 @@ import { build } from 'esbuild';
 import { writeBuildInfo } from './build-info.mjs';
 
 await build({
-  entryPoints: ['server/index.ts'],
-  outfile: 'dist/server/index.js',
+  entryPoints: {index:'server/index.ts', fleet:'server/fleet/index.ts', collector:'server/fleet/collector.ts'},
+  outdir: 'dist/server',
   bundle: true,
   platform: 'node',
   target: 'node20',

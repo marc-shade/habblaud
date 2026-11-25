@@ -38,6 +38,10 @@ Everything runs on your machine, reading the files Claude Code itself already wr
 your shell, to give each account its letter). Nothing leaves the computer: Habblaud doesn't read credentials or make
 external calls.
 
+## Phoenix fleet office
+
+This fork adds a read-only office for Claude Code, Codex and agy on macOS and Linux. Build the checkout, then run `npm run fleet`. [Fleet setup and source coverage](FLEET.md)
+
 ## Contents
 
 - [What it looks like](#what-it-looks-like)
