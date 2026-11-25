@@ -22,6 +22,8 @@ The production build and TypeScript checks exited 0. The full suite passed 1,884
 
 A live browser check against port 4749 required all six nodes online and all three sources readable on each. It saw 17 sessions in ten rooms, matched a labeled agy turn on mbp-max, focused its character and returned to the overview. A permission write returned HTTP 405. The browser reported zero uncaught page errors. The live ai-laptop SSH process used the configured en0 interface and strict host-key checking. After native Google authorization on Fedora, a fresh headless agy turn returned its exact per-run marker. The live office snapshot contained the matching Fedora agy conversation ID, with all six nodes online.
 
+Fedora subsequently renewed an expired access token without another interactive sign-in. Its native agy diagnostic `cli-20261125_170854.log` marked the loaded token expired at line 75, recorded a refresh with a new expiry at line 76, and reported successful OAuth authentication at line 79. The subsequent `match-fedora-live.py` gate exited 0 after matching a fresh exact-reply turn to its Fedora agy session in the live snapshot. All six nodes were online.
+
 ## Gaps / not covered
 
 The passive Codex reader can lag tool execution and miss approval waits. Recent agy file activity cannot establish whether a process is still running. Hashes are stable identifiers, not anonymization. Anyone with access to the coordinator's loopback interface can read the displayed project names and activity. The fleet viewer has no approval, messaging or command endpoints.
