@@ -51,8 +51,10 @@ The live acceptance check found six online nodes with three readable session sou
 
 A local Codex turn returned the requested marker through Ollama and its session ID appeared in the full office. The installed Claude `/habblaud` command returned the live English summary. The local office also opened a real Claude PTY, resized it, streamed its startup screen and closed it. The dictation API transcribed the installed Whisper JFK audio sample in English. The production build, typecheck and native Herdr check exited 0. The English translation audit covered 2,989 of 2,989 registered keys; the project suite passed 1,884 tests with two Windows-specific skips. The Claude plugin suites passed 35 tests.
 
+The office delivered a plain-text message to a dedicated headless Codex session. The native Codex queue contained exactly one copy addressed to that thread. In a separate headless Claude session, the office received a real `Write` request. An automated operator denied it, Claude emitted its permission-denied event and the file stayed absent. Both sessions used a local Ollama model. A Chromium check at a 390-pixel iPhone viewport opened a fleet session, returned to Overview and displayed the English office with no uncaught page errors.
+
 ## Gaps / not covered
 
 The passive Codex reader can lag tool execution and miss approval waits. Recent agy file activity cannot establish whether a process is still running. Hashes are stable identifiers, not anonymization. Anyone with access to the coordinator's loopback interface can read the displayed project names and activity. The fleet viewer has no approval, messaging or command endpoints.
 
-The November 26 checks did not exercise signed-in World social activity, phone access, a real human approval or message to an ongoing work session, or recovery following a Mac reboot. Office and fleet listeners are loopback-only.
+The November 26 checks did not exercise signed-in World social activity, access from a physical phone, human approval of a tool call, or recovery following a Mac reboot. Codex queue delivery was confirmed. A subsequent agent reply and plain-text delivery to an interactive Claude session remain unverified. Office and fleet listeners are loopback-only.
