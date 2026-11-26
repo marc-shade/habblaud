@@ -215,11 +215,12 @@ describe('HABBLAUD_WORLD e HABBLAUD_WORLD_URL', () => {
     // Sem HABBLAUD_WORLD_URL (ou vazia), o servidor do mundo padrão; definida, vale a definida (e recusada não cai no padrão).
     expect(p(undefined)).toEqual({ enabled: true, dev: false, url: DEFAULT_WORLD_URL, defaultUrl: true });
     expect(p('  ')).toEqual({ enabled: true, dev: false, url: DEFAULT_WORLD_URL, defaultUrl: true });
-    expect(DEFAULT_WORLD_URL).toBe('https://server.habblaud.com');
-    expect(p('https://server.habblaud.com')).toEqual({ enabled: true, dev: false, url: 'https://server.habblaud.com' });
-    expect(p('https://outro.exemplo.com')).toEqual({ enabled: true, dev: false, url: 'https://outro.exemplo.com' });
-    expect(p('wss://server.habblaud.com/').url).toBe('https://server.habblaud.com');
-    expect(p('https://server.habblaud.com:8443').url).toBe('https://server.habblaud.com:8443');
+    expect(DEFAULT_WORLD_URL).toBe('http://127.0.0.1:4761');
+    for (const url of ['https://server.habblaud.com', 'https://outro.exemplo.com', 'wss://server.habblaud.com/', 'https://server.habblaud.com:8443']) {
+      expect(p(url).url).toBeUndefined();
+      expect(p(url).warning).toMatch(/SSH/);
+    }
+    expect(p('wss://127.0.0.1:8443/').url).toBe('https://127.0.0.1:8443');
     expect(p('http://server.habblaud.com').warning).toMatch(/https/);
     expect(p('http://127.0.0.1:4848').url).toBeUndefined();
     expect(p('http://127.0.0.1:4848').warning).toMatch(/desenvolvimento/);

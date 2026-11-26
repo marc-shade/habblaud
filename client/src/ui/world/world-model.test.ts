@@ -3,8 +3,7 @@ import { PART_KEYS } from '../../../../shared/appearance';
 import { TRAIT_IDS } from '../../../../shared/world/traits';
 import { FAKE_UPLINK, WORLD_UI_ERROR_CODES, type WorldBuildingStatus, type WorldBuildingStop, type WorldMeta } from '../../net/world';
 import {
-  APPEAL_EMAIL,
-  appealMailto,
+  WORLD_SUPPORT_PATH,
   EXPORT_FILENAME,
   notifyInactivityOn,
   unverifiedHint,
@@ -539,16 +538,13 @@ describe('conta e dados (Fase 6)', () => {
     expect(screensFor('logged_out')).not.toContain('account');
   });
 
-  it('recurso por e-mail: mailto com o assunto fixo e o id da conta quando se sabe (só um id limpo)', () => {
-    expect(APPEAL_EMAIL).toBe('privacidade@habblaud.com');
-    expect(appealMailto()).toBe('mailto:privacidade@habblaud.com?subject=Recurso%20Habblaud%20World');
-    expect(appealMailto('acc_1')).toBe('mailto:privacidade@habblaud.com?subject=Recurso%20Habblaud%20World%20acc_1');
-    expect(appealMailto('x&cc=a@b.co')).toBe(appealMailto());
+  it('routes World account support to the private office', () => {
+    expect(WORLD_SUPPORT_PATH).toBe('/cluster-privacy.txt');
   });
 
   it('conta suspensa ou banida: "Recorrer por e-mail"; as outras paradas, não', () => {
     const stopped = (reason: WorldBuildingStop) => buildingView({ ...live, connected: false, stopped: reason }, true, NOW);
-    for (const r of ['banned', 'suspended'] as const) expect(stopped(r).appeal).toMatchObject({ text: 'Recorrer por e-mail', hint: expect.stringContaining(APPEAL_EMAIL) });
+    for (const r of ['banned', 'suspended'] as const) expect(stopped(r).appeal).toMatchObject({ text: 'Consultar o operador', hint: 'Consulte as instruções locais de revisão.' });
     for (const r of ['update', 'other-device', 'waiting', 'no_player', 'unauthorized', 'deleted'] as const) expect(stopped(r).appeal, r).toBeNull();
     expect(stopped('deleted')).toMatchObject({ label: 'Conta excluída', toggle: null, leave: false });
     expect(buildingView(live, true, NOW)).toMatchObject({ appeal: null, unverified: null });
@@ -557,11 +553,11 @@ describe('conta e dados (Fase 6)', () => {
   it('não verificado: o selo com "Contestar por e-mail" enquanto o prédio está no mundo; o rótulo da cidade', () => {
     const v = buildingView({ ...live, unverified: true }, true, NOW);
     expect(v.unverified).toMatch(/não verificado/);
-    expect(v.appeal).toMatchObject({ text: 'Contestar por e-mail' });
-    expect(buildingView({ ...live, unverified: true, paused: true }, true, NOW).appeal?.text).toBe('Contestar por e-mail');
+    expect(v.appeal).toMatchObject({ text: 'Consultar o operador' });
+    expect(buildingView({ ...live, unverified: true, paused: true }, true, NOW).appeal?.text).toBe('Consultar o operador');
     expect(buildingView({ ...live, unverified: true, left: true }, true, NOW)).toMatchObject({ unverified: null, appeal: null });
     // Suspensa vale mais que o selo: o recurso é da suspensão.
-    expect(buildingView({ ...live, connected: false, unverified: true, stopped: 'suspended' }, true, NOW)).toMatchObject({ unverified: null, appeal: { text: 'Recorrer por e-mail' } });
+    expect(buildingView({ ...live, connected: false, unverified: true, stopped: 'suspended' }, true, NOW)).toMatchObject({ unverified: null, appeal: { text: 'Consultar o operador' } });
     expect(unverifiedLabel()).toBe('Não verificado');
     expect(unverifiedHint()).toMatch(/revisão/);
   });

@@ -102,7 +102,7 @@ saem com `nosniff` e `Cross-Origin-Resource-Policy: same-origin`, sem CORS.
 
 ## Versão nova
 
-`updates/checker.ts` consulta `GET https://api.github.com/repos/<dono>/<nome>/releases/latest`, sem token, 5 s depois
+`updates/checker.ts` consulta `GET /releases/latest no catálogo local`, sem token, 5 s depois
 de subir e depois a cada 6 h (1 h depois de uma falha). O repositório vem do campo `repository` do `package.json`
 (um fork só precisa trocar esse campo). A consulta manda `If-None-Match` com o ETag da anterior, porque a resposta
 304 não gasta o limite de 60 consultas por hora sem token. O resultado (`repo`, `checkedAt`, `etag`, `latest`, `url`,
@@ -357,7 +357,7 @@ do Codex levam `provider: 'codex'` (ausente = Claude Code). Ids: `<conta>:<threa
 
 ## Habblaud World
 
-Ligado por padrão, apontando para `server.habblaud.com` (`DEFAULT_WORLD_URL` em `config.ts`); nada sai do computador
+Ligado por padrão, apontando para o túnel privado em `127.0.0.1:4761` (`DEFAULT_WORLD_URL` em `config.ts`); nada sai do computador
 antes de a pessoa criar a conta e entrar, e `HABBLAUD_WORLD=0` desliga tudo (o que sai do computador:
 `docs/world/privacidade.md`; como mexer: `shared/world/README.md`). O protocolo com o servidor do mundo é `shared/world/protocol.ts` (fonte da verdade, com
 `schema.json`). Do lado daqui, `world/`:
@@ -495,7 +495,7 @@ em `shared/world/city.ts` (fonte da verdade; o servidor do mundo guarda a cópia
 | `HABBLAUD_ACCOUNTS` | — | JSON com metadados das contas vindos do host (Docker): `[{id, configDir, mountDir, short, name, email, organization, plan, color, cachedUsage}]`, casados por `id`, `mountDir` ou `configDir` |
 | `HABBLAUD_USAGE_DIR` | `~/.habblaud/usage` (Docker: `/usage`) | pasta do uso capturado pelo tap de statusline ou pelo mod do Claude Code, relida a cada 5 s |
 | `HABBLAUD_ALLOWED_HOSTS` | — | nomes extras aceitos no `Host`/`Origin` (vírgula); `localhost`, `*.localhost` e IPs sempre valem |
-| `HABBLAUD_WORLD_URL` | `https://server.habblaud.com` | servidor do Habblaud World: só `https://` ou `wss://`, sem caminho; `http://127.0.0.1:*` só no modo dev (recusada, o World fica desligado). O prédio sobe pelo WebSocket na mesma origem (`/v1/socket`) |
+| `HABBLAUD_WORLD_URL` | `http://127.0.0.1:4761` | Origem privada do World via túnel SSH local. |
 | `HABBLAUD_WORLD` | ligado | `0` (`false`, `off`, `no`) desliga o Habblaud World: rotas 404, nada na interface e nada sai |
 | `HABBLAUD_WORLD_DEV` | desligado (`--dev` liga) | `1` aceita o servidor do mundo em `http://127.0.0.1` ou `ws://127.0.0.1` |
 

@@ -38,7 +38,7 @@ import { INTRO_IDS, introLabel, isIntroId, type IntroId } from '../../../../shar
 import { parsePlayerName } from '../../../../shared/world/names-rules';
 import { PLAYER_NAME_LIMITS } from '../../../../shared/world/protocol';
 import {
-  APPEAL_EMAIL,
+  WORLD_SUPPORT_PATH,
   characterProblem,
   codeLooksValid,
   DEFAULT_VISIBILITY,
@@ -1239,7 +1239,7 @@ export class WorldSettingsGroup {
         inactivity.el,
         exportBox,
         deletion,
-        para('ui-set__hint', tr('Dúvidas ou pedidos sobre os seus dados: {0}.', [APPEAL_EMAIL])),
+        extLink(tr('Consultar o operador'), WORLD_SUPPORT_PATH),
       ),
       sync: inactivity.sync,
     };

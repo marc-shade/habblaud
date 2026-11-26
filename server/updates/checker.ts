@@ -57,6 +57,7 @@ export function parseGithubRepo(repository: unknown): string | undefined {
 }
 
 interface Cached {
+  catalog?: string;
   repo: string;
   checkedAt: number;
   etag?: string;
@@ -68,6 +69,7 @@ interface Cached {
 export interface UpdateCheckerOptions {
   /** Versão em uso (package.json). */
   current: string;
+  catalog?: string;
   /** "dono/nome"; ausente = verificação desligada. */
   repo?: string;
   /** HABBLAUD_UPDATE_CHECK=0 desliga. */
@@ -99,12 +101,23 @@ export class UpdateChecker {
     return this.opts.enabled && !!this.opts.repo;
   }
 
+  async releaseNotes(): Promise<string> {
+    if (!this.opts.catalog) throw new Error('Local release catalog unavailable');
+    const reply = await this.fetchFn(this.opts.catalog + '/releases/notes', {
+      redirect: 'error',
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!reply.ok) throw new Error('Release notes unavailable');
+    return reply.text();
+  }
+
   status(): UpdateStatus {
     if (!this.enabled) return { state: 'off', repo: this.opts.repo, available: false };
     const c = this.cache;
     return {
       state: this.error ? 'error' : c ? 'ok' : 'pending',
       repo: this.opts.repo,
+      ...(this.opts.catalog ? { cluster: true } : {}),
       checkedAt: c?.checkedAt,
       latest: c?.latest,
       url: c?.url,
@@ -120,14 +133,14 @@ export class UpdateChecker {
     if (!this.opts.file || !this.enabled || !repo) return;
     try {
       const j = JSON.parse(readFileSync(this.opts.file, 'utf8')) as Partial<Cached>;
-      if (j.repo !== repo || typeof j.checkedAt !== 'number' || !Number.isFinite(j.checkedAt)) return;
+      if (j.catalog !== this.opts.catalog || j.repo !== repo || typeof j.checkedAt !== 'number' || !Number.isFinite(j.checkedAt)) return;
       const latest = typeof j.latest === 'string' && parseVersion(j.latest) ? j.latest : undefined;
       this.cache = {
         repo,
         checkedAt: j.checkedAt,
         etag: typeof j.etag === 'string' ? j.etag.slice(0, 200) : undefined,
         latest,
-        url: latest ? safeReleaseUrl(j.url, repo) : undefined,
+        url: latest ? (this.opts.catalog ? '/api/updates/notes' : safeReleaseUrl(j.url, repo)) : undefined,
         publishedAt: latest && typeof j.publishedAt === 'number' ? j.publishedAt : undefined,
       };
     } catch (err) {
@@ -170,7 +183,7 @@ export class UpdateChecker {
       this.error = undefined;
       log.clearOnce('updates');
     } catch (err) {
-      this.error = describeError(err);
+      this.error = this.opts.catalog ? tr('Catálogo local indisponível ({0}).', [err instanceof Error ? err.name : 'error']) : describeError(err);
       log.warnOnce('updates', tr('Verificação de versão nova falhou: {0}.', [this.error]));
     }
     this.schedule(this.error ? RETRY_MS : CHECK_EVERY_MS);
@@ -183,12 +196,13 @@ export class UpdateChecker {
   private async fetchLatest(): Promise<void> {
     const repo = this.opts.repo!;
     const headers: Record<string, string> = {
-      Accept: 'application/vnd.github+json',
+      Accept: this.opts.catalog ? 'application/json' : 'application/vnd.github+json',
       'User-Agent': `habblaud/${this.opts.current}`,
-      'X-GitHub-Api-Version': '2022-11-28',
+      ...(!this.opts.catalog ? { 'X-GitHub-Api-Version': '2022-11-28' } : {}),
     };
     if (this.cache?.etag) headers['If-None-Match'] = this.cache.etag;
-    const res = await this.fetchFn(`https://api.github.com/repos/${repo}/releases/latest`, {
+    const res = await this.fetchFn(this.opts.catalog ? this.opts.catalog + '/releases/latest' : `https://api.github.com/repos/${repo}/releases/latest`, {
+      redirect: 'error',
       headers,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -210,7 +224,7 @@ export class UpdateChecker {
         checkedAt: now,
         etag: res.headers.get('etag')?.slice(0, 200) || undefined,
         latest,
-        url: latest ? safeReleaseUrl(body.html_url, repo) : undefined,
+        url: latest ? (this.opts.catalog ? '/api/updates/notes' : safeReleaseUrl(body.html_url, repo)) : undefined,
         publishedAt: latest && Number.isFinite(published) ? published : undefined,
       };
     } else if (res.status === 403 || res.status === 429) {
@@ -218,6 +232,7 @@ export class UpdateChecker {
     } else {
       throw new Error(tr('o GitHub respondeu {0}', [res.status]));
     }
+    if (this.cache && this.opts.catalog) this.cache.catalog = this.opts.catalog;
     this.save();
   }
 

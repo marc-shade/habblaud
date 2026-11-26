@@ -49,7 +49,7 @@ export function updateStatusLine(version: string, s: UpdateStatus | undefined, n
       return { tone: 'warn', text: tr('Não deu para verificar agora: {0}{1}.', [s.error ?? tr('erro desconhecido'), s.checkedAt ? tr(' · última verificação {0}', [relativeTime(s.checkedAt, now)]) : '']) };
     case 'ok':
       if (s.available && s.latest) return { tone: 'new', text: tr('Nova versão disponível: v{0}{1}.', [s.latest, s.publishedAt ? tr(', publicada em {0}', [formatDateTime(s.publishedAt)]) : '']) };
-      if (!s.latest) return { tone: 'ok', text: tr('Nenhuma versão publicada no GitHub ainda{0}.', [checked]) };
+      if (!s.latest) return { tone: 'ok', text: s.cluster ? tr('Nenhuma versão no catálogo local{0}.', [checked]) : tr('Nenhuma versão publicada no GitHub ainda{0}.', [checked]) };
       if (s.latest !== version) return { tone: 'ok', text: tr('Você está à frente da última versão publicada (v{0}){1}.', [s.latest, checked]) };
       return { tone: 'ok', text: tr('Você está na versão mais recente{0}.', [checked]) };
   }
@@ -170,7 +170,7 @@ export class AboutGroup {
     const s = info.updates;
     setText(this.name, `v${info.version}`);
     const line = this.failure ? { tone: 'warn' as const, text: this.failure } : updateStatusLine(info.version, s, this.ctx.now());
-    setText(this.status, this.checking ? tr('Consultando o GitHub…') : line.text);
+    setText(this.status, this.checking ? tr('Verificando se há versão nova…') : line.text);
     setVariant(this.status, 'is-', this.checking ? 'pending' : line.tone);
     setHidden(this.checkBtn, !s || s.state === 'off');
     this.checkBtn.disabled = this.checking || this.ctx.store.connection !== 'open';
@@ -179,11 +179,11 @@ export class AboutGroup {
     setHidden(this.fresh, !fresh);
     if (fresh) {
       setText(this.notes, tr('Ver o que mudou na v{0}', [s!.latest]));
-      const url = safeGithubUrl(s!.url);
+      const url = s!.cluster ? '/api/updates/notes' : safeGithubUrl(s!.url);
       setHidden(this.notes, !url);
       if (url) setAttr(this.notes, 'href', url);
     }
-    const repoUrl = s?.repo ? safeGithubUrl(`https://github.com/${s.repo}`) : undefined;
+    const repoUrl = s?.repo && !s.cluster ? safeGithubUrl(`https://github.com/${s.repo}`) : undefined;
     setHidden(this.repo, !repoUrl);
     if (repoUrl) setAttr(this.repo, 'href', repoUrl);
   }

@@ -1,0 +1,7 @@
+Private Habblaud World
+
+World account data is stored on the Linux host. The office sends its World projection after sign-in. This includes the office theme, pseudonymous floors and agents, activity categories, and optional token totals. The operator can inspect the last projection in the office. Visibility settings control what other World users can see.
+
+The host stores account and device records, building summaries, and social actions. Live floor detail is held in memory. Verification and recovery codes are available to the Linux host account owner. Use the account controls to export data, revoke a device, leave the city, or request account deletion.
+
+For account appeals, disputes and data requests, contact the operator of your private cluster. Provide your player name and describe the action you want reviewed. Keep passwords and verification codes private. The operator can review reports and restore access using the World administration command on the Linux host.

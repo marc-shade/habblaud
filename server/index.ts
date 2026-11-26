@@ -3,6 +3,7 @@
 //   npm run dev    -> tsx server/index.ts --dev (Vite em middleware mode, HMR no mesmo servidor)
 //   npm start      -> node dist/server/index.js (serve dist/client)
 import http from 'node:http';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { codexDirsRefused, isDefaultDir } from './accounts/detect';
 import { AccountsService } from './accounts/service';
@@ -80,19 +81,21 @@ roomAliases.load();
 
 // Office, contas e fontes de agentes se referenciam (avisos de mudança / fontes): ligação tardia.
 const late: { office?: Office; agents?: SourceSet; permissions?: PermissionRegistry; messages?: MessageRegistry; ptys?: PtyManager; ptyOff?: string } = {};
-// Versão nova: consulta a release mais recente no GitHub a cada 6 h (HABBLAUD_UPDATE_CHECK=0 desliga).
+// Read the private Linux release catalog every six hours.
 const updates = new UpdateChecker({
   current: config.version,
   repo: config.repo,
   enabled: config.updateCheck,
-  file: join(config.dataDir, 'updates.json'),
+  catalog: config.clusterOrigin,
+  file: join(config.dataDir, 'cluster-updates.json'),
   onChange: () => late.office?.markDirty(),
 });
 updates.load();
-// Habblaud World (server/world/): a conta e o personagem neste computador. Ligado por padrão (server.habblaud.com, ou
+// Habblaud World (server/world/): the local account is scoped to the private origin (DEFAULT_WORLD_URL or
 // HABBLAUD_WORLD_URL); nada sai do computador antes de a pessoa criar a conta e entrar. HABBLAUD_WORLD=0 esconde tudo
 // (rotas 404 e nada na interface); uma HABBLAUD_WORLD_URL recusada deixa o recurso desligado.
-const worldStore = new WorldSettingsStore(join(config.dataDir, 'world.json'));
+const worldOriginId = createHash('sha256').update(config.clusterOrigin).digest('hex');
+const worldStore = new WorldSettingsStore(join(config.dataDir, 'world-' + worldOriginId + '.json'));
 if (config.world.enabled && config.world.url) worldStore.load();
 // O social leve do dono (world/social.ts): likes do dia, "enquanto você estava fora", batidas na porta e bloqueados.
 const worldSocial = config.world.enabled ? new OwnerSocial({ session: () => worldStore.get()?.deviceId, onChange: () => late.office?.markDirty() }) : undefined;
@@ -534,7 +537,7 @@ server.listen(config.port, config.host, () => {
   );
   log.info(
     updates.enabled
-      ? tr('   Versão nova: verificando as releases de github.com/{0} a cada 6 h.', [config.repo])
+      ? tr('   Versões: catálogo local em {0}, a cada 6 h.', [config.clusterOrigin])
       : tr('   Versão nova: verificação desligada ({0}).', [config.repo ? 'HABBLAUD_UPDATE_CHECK' : tr('package.json sem repositório no GitHub')]),
   );
 });

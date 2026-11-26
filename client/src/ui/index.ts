@@ -218,9 +218,11 @@ export function createUI(root: HTMLElement, store: OfficeStore, world: WorldApi,
   const openLink = (url: URL) => {
     const agent = url.searchParams.get('agent');
     const delivery = url.searchParams.get('delivery');
-    if (!agent && !delivery) return;
+    const worldPanel = url.searchParams.get('panel') === 'world';
+    if (!agent && !delivery && !worldPanel) return;
     const go = () => {
-      if (delivery) void deliveries.openById(delivery);
+      if (worldPanel && store.snapshot?.meta.world && !access().remote) worldDialog.show('home', topbar.worldBtn);
+      else if (delivery) void deliveries.openById(delivery);
       else if (agent && ctx.agent(agent)) ctx.select({ type: 'agent', id: agent }, { focus: true });
     };
     if (store.snapshot) go();
@@ -232,7 +234,6 @@ export function createUI(root: HTMLElement, store: OfficeStore, world: WorldApi,
     }
     if (url.search && location.search === url.search) window.history.replaceState(null, '', location.pathname);
   };
-  if (typeof location !== 'undefined') openLink(new URL(location.href));
   drawer = new Drawer(ctx, terminal, pty);
   const feed = new FeedPanel(ctx);
   const toasts = new Toasts(ctx);
@@ -242,6 +243,7 @@ export function createUI(root: HTMLElement, store: OfficeStore, world: WorldApi,
   const hw = worldSource(store);
   worldDialog = new WorldDialog(ctx, hw, topbar.worldBtn);
   settings = new SettingsPopover(ctx, notifier, sound, worldDialog);
+  if (typeof location !== 'undefined') openLink(new URL(location.href));
   const popups = new WorldPopups(ctx, hw, { openWorld: (screen) => worldDialog.show(screen, topbar.worldBtn), panelOpen: () => settings.isOpen || worldDialog.isOpen });
   // Chip "🏙️ no mundo" / "⏸ pausado" na barra do topo (conta aprovada; nunca pela porta do celular).
   const worldChip = new WorldChip(ctx, hw, () => worldDialog.show('home'), (n) => toasts.push(n));

@@ -15,7 +15,7 @@ import { formatClock, relativeTime } from '../format';
 import { ICONS } from '../icons';
 import { BuildingSocial } from './away-summary';
 import { extLink, WORLD_PRIVACY_URL } from './links';
-import { ackView, appealMailto, buildingView, bytesText, leaveHint, prettyUplink, worldErrorText } from './world-model';
+import { ackView, WORLD_SUPPORT_PATH, buildingView, bytesText, leaveHint, prettyUplink, worldErrorText } from './world-model';
 
 export interface BuildingHost {
   readonly client: WorldClient | null;
@@ -85,7 +85,7 @@ export class BuildingCard {
     this.leaveBtn = h('button', { class: 'ui-btn', type: 'button', text: tr('Sair do mundo'), on: { click: () => void this.leave() } });
     this.leaveRow = h('div', { class: 'ui-world__leave' }, h('p', { class: 'ui-set__hint', text: leaveHint() }), h('div', { class: 'ui-world__actions' }, this.leaveBtn));
     this.unverified = h('p', { class: 'ui-world__unverified', role: 'status', hidden: true });
-    this.appealLink = h('a', { class: 'ui-btn', attrs: { href: appealMailto() } });
+    this.appealLink = h('a', { class: 'ui-btn', attrs: { href: WORLD_SUPPORT_PATH, target: '_blank', rel: 'noopener noreferrer' } });
     this.appealHint = h('span', { class: 'ui-set__hint' });
     this.appealRow = h('div', { class: 'ui-world__appeal', hidden: true }, this.appealHint, h('div', { class: 'ui-world__actions' }, this.appealLink));
     this.social = new BuildingSocial({ client: host.client, building: () => host.building(), refresh: () => host.refresh() });
@@ -144,7 +144,7 @@ export class BuildingCard {
     if (v.appeal) {
       setText(this.appealLink, v.appeal.text);
       setText(this.appealHint, v.appeal.hint);
-      setAttr(this.appealLink, 'href', appealMailto(this.host.accountId?.()));
+      setAttr(this.appealLink, 'href', WORLD_SUPPORT_PATH);
     }
     this.social.sync();
   }

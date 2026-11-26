@@ -231,6 +231,7 @@ export interface RoomEffect {
  * (server/updates/checker.ts) e compara com a versão em uso.
  */
 export interface UpdateStatus {
+  cluster?: boolean;
   /**
    * - off: verificação desligada (HABBLAUD_UPDATE_CHECK=0 ou package.json sem repositório no GitHub);
    * - pending: ainda não verificou;

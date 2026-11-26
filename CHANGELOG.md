@@ -10,6 +10,8 @@ do meio (0.**3**.0).
 
 ## [Não lançado]
 
+- World accounts and city activity use the private cluster service. Release checks, notes, account help, and policy links stay local. Device credentials are scoped to each World origin.
+
 - The Herdr control center now shows live Habblaud node and session status and opens the fleet or full local office. The cluster office starts in English.
 
 - A visualização local da frota reúne Claude Code, Codex e agy dos nós macOS e Linux por SSH em um escritório somente leitura.

@@ -53,8 +53,16 @@ A local Codex turn returned the requested marker through Ollama and its session 
 
 The office delivered a plain-text message to a dedicated headless Codex session. The native Codex queue contained exactly one copy addressed to that thread. In a separate headless Claude session, the office received a real `Write` request. An automated operator denied it, Claude emitted its permission-denied event and the file stayed absent. Both sessions used a local Ollama model. A Chromium check at a 390-pixel iPhone viewport opened a fleet session, returned to Overview and displayed the English office with no uncaught page errors.
 
+## Private cluster services
+
+The full office and the Herdr fleet view run on the Mac orchestrator. Fedora runs the private World and release catalog under its user systemd manager. The Mac launch agent `com.2acrestudios.habblaud.world-tunnel` forwards loopback port 4761 to Fedora. The office keeps a separate device credential for each World origin. The release catalog uses the closest version tag in the local office checkout.
+
+AI Lab holds both primary Git repositories under the owner’s SSH account. The public GitHub fork mirrors the office source on `phoenix/fleet-office`. The World implementation, mailbox and database stay on the cluster. Operators can read the private service runbook in the sibling `habblaud-world` checkout.
+
+`npm run verify:phone` exercises the production HTTPS phone listener on loopback using a temporary CA and a temporary full office. The private World acceptance gate starts real offices with disposable accounts, projects their buildings, and exercises city visits, visibility, account export, recovery and device revocation.
+
 ## Gaps / not covered
 
 The passive Codex reader can lag tool execution and miss approval waits. Recent agy file activity cannot establish whether a process is still running. Hashes are stable identifiers, not anonymization. Anyone with access to the coordinator's loopback interface can read the displayed project names and activity. The fleet viewer has no approval, messaging or command endpoints.
 
-The November 26 checks did not exercise signed-in World social activity, access from a physical phone, human approval of a tool call, or recovery following a Mac reboot. Codex queue delivery was confirmed. A subsequent agent reply and plain-text delivery to an interactive Claude session remain unverified. Office and fleet listeners are loopback-only.
+The November 26 checks left the production World account signed out. Access from a physical phone, human approval of a tool call, and recovery following a Mac reboot remain unverified. Codex queue delivery was confirmed. A subsequent agent reply and plain-text delivery to an interactive Claude session remain unverified. Office and fleet listeners are loopback-only.

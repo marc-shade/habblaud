@@ -29,14 +29,17 @@ export default class Habblaud extends View {
     this.polling = true;
     cx.spawn(async cx => {
       try {
-        const [cluster, local, requests] = await Promise.allSettled([
+        const [cluster, local, requests, world, account] = await Promise.allSettled([
           read(fleet + "/api/snapshot"), read(office + "/api/health"), read(office + "/api/mod/summary"),
+          read("http://127.0.0.1:4761/health"), read(office + "/api/world/status"),
         ]);
         this.snapshot = cluster.status === "fulfilled" ? cluster.value : null;
         this.health = local.status === "fulfilled" ? local.value : null;
         this.waiting = requests.status === "fulfilled" ? requests.value.waiting : null;
-        this.errors = [cluster, local, requests].map((r, i) => r.status === "rejected"
-          ? (["Fleet office: ", "Local office: ", "Review requests: "][i]) + String(r.reason) : "").filter(Boolean);
+        this.worldOnline = world.status === "fulfilled" && world.value.storage === true && world.value.service === "habblaud-private-world";
+        this.worldState = account.status === "fulfilled" ? account.value.state : null;
+        this.errors = [cluster, local, requests, world, account].map((r, i) => r.status === "rejected"
+          ? (["Fleet office: ", "Local office: ", "Review requests: ", "Private World: ", "World account: "][i]) + String(r.reason) : "").filter(Boolean);
       } finally {
         this.polling = false;
         cx.notify();
@@ -61,6 +64,7 @@ export default class Habblaud extends View {
     const workspaces = spaces().filter(s => (s.machine || "mbp-max") === this.node);
     const actions = h_flex().gap(8).flex_wrap()
       .child(button("office", "Open full local office", cx => this.open(office + "/?lang=en", cx)))
+      .child(button("world", "Open private World", cx => this.open(office + "/?lang=en&panel=world", cx)))
       .child(button("fleet", "Open fleet canvas", cx => this.open(fleet + "/?lang=en", cx)))
       .child(button("refresh", "Refresh", cx => this.refresh(cx)));
     const panel = v_flex().id("habblaud-office").size_full().min_h(0).overflow_y_scroll()
@@ -72,6 +76,7 @@ export default class Habblaud extends View {
       const enabled = ["terminal", "permissions", "pty", "messages", "codexEvents"].filter(k => this.health[k]);
       panel.child(div().child("Local server " + this.health.version + " · " + enabled.map(k => ({pty:"interactive terminal",codexEvents:"Codex events"}[k] || k)).join(", ")));
     }
+    if (this.worldOnline) panel.child(div().child("Private World online" + (this.worldState ? " · " + ({ logged_out: "signed out", approved: "approved", waiting: "waiting for approval" }[this.worldState] || this.worldState) : "")));
     for (const error of [...(this.errors || []), this.openError].filter(Boolean)) panel.child(div().text_color("#edb397").child(error));
     if (this.waiting?.length) {
       panel.child(section("Waiting for you · local office"));

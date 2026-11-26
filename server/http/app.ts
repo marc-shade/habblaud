@@ -83,6 +83,7 @@ export interface ApiDeps {
   updates?: {
     status(): UpdateStatus;
     check(opts: { manual?: boolean }): Promise<UpdateStatus>;
+    releaseNotes?(): Promise<string>;
   };
   /**
    * Porta remota com login (http/remote.ts): `is` diz se a requisição chegou por ela (já autenticada); `allows`, o que
@@ -688,6 +689,15 @@ export function createApiHandler(deps: ApiDeps): (req: IncomingMessage, res: Ser
       if (method !== 'POST') methodNotAllowed(res, 'POST');
       else if (isRemote(req)) sendJson(res, 403, { error: tr('não liberado no acesso remoto (veja HABBLAUD_REMOTE_ALLOW)') });
       else handleDemo(req, res).catch((err) => fail(res, err));
+      return true;
+    }
+    if (path === '/api/updates/notes') {
+      if (!isRead) methodNotAllowed(res, 'GET');
+      else if (!deps.updates?.releaseNotes) sendJson(res, 404, { error: 'No local release catalog' });
+      else void deps.updates.releaseNotes().then(text => {
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' });
+        res.end(text);
+      }).catch(() => sendJson(res, 503, { error: 'Local release notes unavailable' }));
       return true;
     }
     if (path === '/api/updates') {

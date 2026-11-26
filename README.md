@@ -315,8 +315,7 @@ in the clear on the network). In Node mode: `HABBLAUD_REMOTE_PORT` and `HABBLAUD
 ### Updating
 
 The version in use shows up in the top bar, next to "Connected", and in **Settings › About**. Every 6 hours
-Habblaud checks GitHub for a new version (the [releases](https://github.com/marc-shade/habblaud/releases)
-of this repository). When there is one, the green **New version** badge appears in place of the number, along with a notice and a dot on the
+Habblaud checks the release catalog on the personal Linux host through a loopback SSH tunnel. When there is one, the green **New version** badge appears in place of the number, along with a notice and a dot on the
 settings button. **About** has the link to what changed and the **Check now** button (each version's notes
 are also in [`CHANGELOG.md`](CHANGELOG.md)). To update:
 
@@ -332,7 +331,7 @@ npm run docker:up        # ou: npm run build && npm start (e depois npm run mod:
 
 `docker:up` also updates the mod in the accounts where it's already installed (it never installs it on its own) and tells you:
 "Mod updated to 0.3.0 on Account D; open sessions: /reload-plugins". In Node mode, run `npm run mod:install`
-after updating. To skip checking GitHub, use `HABBLAUD_UPDATE_CHECK=0` (in `.env`, for Docker).
+after updating. To skip the local catalog check, use `HABBLAUD_UPDATE_CHECK=0` (in `.env`, for Docker).
 
 #### Coming from CodeTown
 
@@ -736,8 +735,8 @@ Everything works without configuring anything. If you need to adjust something, 
 | `HABBLAUD_CODEX` | on | `0` turns off Codex in the office. |
 | `HABBLAUD_CODEX_DIRS` | automatic detection | Codex folders, comma-separated (instead of `~/.codex*` and `CODEX_HOME`). |
 | `HABBLAUD_CODEX_BIN` | `codex` from PATH (on Windows, `codex.exe`) | The Codex binary that delivers the messages (`codex queue`), in Node mode or in `npm run codex:bridge`. |
-| `HABBLAUD_UPDATE_CHECK` | on | `0` turns off the new-version check (a request to the repository's releases on GitHub every 6 h). |
-| `HABBLAUD_LANG` | system language (except English), otherwise `pt-BR` | Language of the texts the server builds (activities, notices, logs): `pt-BR`, `en`, `es` or `fr`. The interface follows the browser or the choice in Settings › Language. See [Languages](#languages). |
+| `HABBLAUD_UPDATE_CHECK` | on | `0` turns off the new-version check (a request to the private release catalog every 6 hours). |
+| `HABBLAUD_LANG` | supported system language, otherwise `en` | Language of the texts the server builds (activities, notices, logs): `pt-BR`, `en`, `es` or `fr`. The interface starts in English. Settings › Language saves a different choice. See [Languages](#languages). |
 | `HABBLAUD_ACCOUNTS` | — | JSON to customize name, letter or color, matched by the account folder name. E.g. `[{"id":".claude-conta2","name":"Trabalho","short":"T","color":"#5cc97b"}]`. |
 
 **In Docker**, `HABBLAUD_PORT`, `HABBLAUD_BIND`, `HABBLAUD_ALLOWED_HOSTS`, `HABBLAUD_DEMO`, `HABBLAUD_TERMINAL`,
@@ -748,20 +747,15 @@ Everything works without configuring anything. If you need to adjust something, 
 
 ## Habblaud World
 
-Habblaud World is an online pixel-art city where every Habblaud becomes a building, lit up live while the agents work,
-and everyone walks around with a character. **It's on by default**, pointing at `server.habblaud.com`; **nothing leaves
-your computer until you create an account** and sign in, and `HABBLAUD_WORLD=0` turns everything off. Access is granted
-through a waiting list.
+Habblaud World runs on the personal Fedora server. Buildings reflect participating offices after a user signs in and creates a character. In Herdr, **Open private World** opens the account panel in the full local office. Fleet monitoring works while World is signed out.
 
-**How to configure it.** The variables below (in `.env` or in the environment) are optional: without them, Habblaud
-points at the official server. The section shows up in the **Habblaud World** window (the city button in the top bar) and only works from this computer (never through the phone port); the
-account stays only here, in `~/.habblaud/world.json` (permission 600; in Docker, in the `/data` volume).
+The orchestrator connects through an SSH tunnel at `http://127.0.0.1:4761`. The full office serves account controls on its local port. Device tokens are stored with mode 0600 in an origin-specific `world-<hash>.json` file under the Habblaud data directory. A new World origin starts signed out.
 
-| Variable | Default | What for |
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `HABBLAUD_WORLD_URL` | `https://server.habblaud.com` | World server address, `https://` or `wss://` only (no path). |
-| `HABBLAUD_WORLD` | on | `0` turns off everything about the World (routes and interface) and nothing leaves your computer. |
-| `HABBLAUD_WORLD_DEV` | off | `1` accepts a local world server without TLS: `http://127.0.0.1:<port>` (`npm run dev` already does) or, from inside Docker, `http://host.docker.internal:<port>`. |
+| `HABBLAUD_WORLD_URL` | `http://127.0.0.1:4761` | Private World origin for this office. |
+| `HABBLAUD_WORLD` | on | Set to `0` to disable World. |
+| `HABBLAUD_WORLD_DEV` | off | Set to `1` for a disposable World on another loopback HTTP port. |
 
 **Privacy.** Nothing about your work leaves your computer. From the building, only this goes out: the theme, one floor
 per open room (with a random code that changes every day) and, for each agent, main or subagent, the tool, the status,
@@ -770,11 +764,7 @@ messages, code, cost, model, branch and your Claude account never leave. The ful
 [docs/world/privacidade.md](docs/world/privacidade.md). **See what was sent**, on the Your building card, shows the
 exact JSON of the last upload, with its size in bytes and the world's reply.
 
-**Account and waitlist.** Sign up with e-mail, **player name** (3 to 20 characters, unique in the world: it stays
-reserved for you while you wait on the list and becomes your character's name) and password (12 characters or more;
-leaked passwords are refused), a 6-digit code by e-mail and accepting the Terms of Use and the Privacy Policy. Every
-account joins a waitlist, and access is granted in batches: an open Habblaud checks on its own every 30 minutes. Up to 3
-computers per account (**Devices**, with revoke).
+**Private accounts.** Choose a unique player name and a password of at least 12 characters. Ask the cluster operator for your six-digit code from the private Linux mailbox. Codes expire in ten minutes. The service supports automatic approval after verification or operator-managed admission. Each account can authorize three devices and revoke them from **Devices**.
 
 **Character.** The player name chosen at sign-up (it can be changed later, once every 30 days), the same appearance
 editor as the agents, 2 or 3 personality traits and an intro line from the list (there's no free text in the world
@@ -783,9 +773,7 @@ besides the name). You can create it while still on the waitlist.
 **Building.** With the account approved and the character created, the building goes up on its own (over a WebSocket)
 and follows the office live. The **Your building** card shows the connection, floors, agents, the last upload and, when
 the world refuses an upload or stops the building (old version, another computer, suspended or banned account), the
-reason; a suspended or banned account gets **Appeal by e-mail**. A building marked as "unverified" (implausible numbers,
-under review) stays out of leaderboards and highlights and shows **Dispute by e-mail**. When the world is under
-maintenance, the card says so, and Habblaud tries again on its own.
+reason. Use **Contact the cluster operator** to request a review of account access or a flagged building. During service maintenance the office retries automatically.
 
 **Visibility.** Live (floors, counters and each character's status) or **discreet mode** (only lit or dark and the
 number of floors); closed to visits; hide the country; the building's **tokens** only in bands (up to 100 thousand, 1
@@ -817,33 +805,18 @@ blocked are listed in **Blocked**, with **Unblock**. In demo mode:
 **Pause, leave, delete.** **Pause** turns the building off right away and keeps the lot (after 30 days paused, it
 disappears from the map; 30 days later, it's removed). **Leave the world** removes the building and frees the lot; the
 account and the character stay, and coming back creates a new building. **Delete account** (in **Account and data**,
-with the code that arrives by e-mail) takes the building and the profile out of the world right away, deletes the
-account, likes, blocks, reports you made and devices from the database within 7 days (and from backups within 30) and
-deletes `world.json` from this computer. With no word from Habblaud for 7 days, the building disappears from the map
-and, 30 days later, is removed; an e-mail warns 3 days before (can be turned off in **Account and data**).
+with the code in the private Linux mailbox) takes the building and the profile out of the world right away, deletes the
+account, likes, blocks, reports you made and devices from the live database after the seven-day grace period and
+removes the local device credentials. With no word from Habblaud for 7 days, the building disappears from the map
+and, 30 days later, is removed; a private operator mailbox notice appears 3 days before (can be turned off in **Account and data**).
 
 **Export.** **Download my data** (in **Account and data**) saves `habblaud-world-dados.json` with what the world keeps
 about your account: e-mail, dates, character, visibility, devices, building, likes given, blocks and reports you made.
 Once a day.
 
-**Truthful data.** The World only works if the buildings are real: changing Habblaud to send invented or inflated
-floors, agents, statuses, tokens or characters breaks the Terms of Use and gets the account banned (the server checks
-the plausibility of every packet). Changing Habblaud for anything else stays free (MIT). How Habblaud talks to the World
-(in Portuguese): [shared/world/README.md](shared/world/README.md).
+**Building review.** The private service checks the projection against the published schema, name pool and token rounding rules. The host operator reviews flagged buildings and player reports locally.
 
-**Testing with a local world server.** For World development, with the world server running on the same computer (for
-example, in Docker, published on port 4848):
-
-- Outside Docker: `HABBLAUD_WORLD_URL=http://127.0.0.1:4848 npm run dev`.
-- With Habblaud in Docker: in this folder's `.env`, `HABBLAUD_WORLD_URL=http://host.docker.internal:4848` and
-  `HABBLAUD_WORLD_DEV=1`; then `npm run docker:up`, which ends with the World line
-  (`Habblaud World: on: http://host.docker.internal:4848`, or why it stayed off). `docker-compose.yml` already maps
-  `host.docker.internal` to the host (`extra_hosts` with `host-gateway`; Docker Desktop already has the name). On
-  Linux, the world server must listen on an interface the container can reach (`0.0.0.0` or the Docker bridge IP): a
-  port published only on the host's `127.0.0.1` doesn't answer through `host-gateway`.
-- Without TLS, only with `HABBLAUD_WORLD_DEV=1` (or `--dev`) and only for `127.0.0.1` and `host.docker.internal`;
-  otherwise, only `https://` or `wss://`. The world server must accept the name used in the URL as its game host
-  (otherwise it answers `421`).
+**Testing on the cluster.** Build this checkout with `npm run build` and run `npm run verify:phone` to exercise HTTPS login through a temporary full office. For World, build the separate private backend against this checkout and run its `npm test`. That test starts real offices with disposable homes and an isolated SQLite database. The cluster service and the orchestrator’s signed-in accounts are separate from the test.
 
 How the section looks, in demo mode (`?mock=1&world=logged_out`, `waiting` or `approved`; in Portuguese):
 [no account](docs/screenshots/world-sem-conta.png), [waitlist](docs/screenshots/world-lista-de-espera.png),
@@ -946,10 +919,7 @@ metadata (letter, email, organization) is read on the host by `docker:up` and pa
   folder: whatever is in it (including after a `git pull`) is what runs. The messages plugin
   (`habblaud-mensagens`) is separate precisely because it acts: it types into the session what you sent from the office.
 - **Local only, by default:** the server only accepts connections from the computer it runs on; opening it to the local network is optional.
-  There's no telemetry. The only external call is the new-version check: every 6 hours, an anonymous request,
-  with no token, to the public GitHub API (`api.github.com/repos/marc-shade/habblaud/releases/latest`). It doesn't send anything
-  about your sessions; GitHub only sees your IP and the version in use, which goes in the `User-Agent`.
-  `HABBLAUD_UPDATE_CHECK=0` turns off the request.
+  Every six hours the office reads the private Linux release catalog. Its notes open in the local office. Set `HABBLAUD_UPDATE_CHECK=0` to disable the check.
   [Habblaud World](#habblaud-world) (on by default) only sends something to the world server after you create an
   account and sign in, and only what is listed in [what leaves your computer](docs/world/privacidade.md) (in Portuguese);
   `HABBLAUD_WORLD=0` turns it all off.
@@ -1293,3 +1263,7 @@ forgotten three days after the agent leaves.
 <p align="center">
   Made with ☕ and lots of <a href="https://code.claude.com">Claude Code</a> agents.
 </p>
+
+## Gaps / not covered
+
+The cluster acceptance checks and platform-specific gaps are recorded in [FLEET.md](FLEET.md).

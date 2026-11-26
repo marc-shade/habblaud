@@ -58,6 +58,7 @@ export interface ServerConfig {
   remoteWarning?: string;
   /** Habblaud World (server/world/): conta, personagem e, nas próximas fases, o prédio no mundo. */
   world: WorldConfig;
+  clusterOrigin: string;
 }
 
 export interface WorldConfig {
@@ -175,7 +176,7 @@ export function messagesOffReason(env: NodeJS.ProcessEnv, host: string, inDocker
  * O servidor do Habblaud World quando HABBLAUD_WORLD_URL está ausente ou vazia: o World vem ligado por padrão, mas nada
  * sai do computador antes de a pessoa criar a conta e entrar (server/world/service.ts). HABBLAUD_WORLD=0 desliga tudo.
  */
-export const DEFAULT_WORLD_URL = 'https://server.habblaud.com';
+export const DEFAULT_WORLD_URL = 'http://127.0.0.1:4761';
 
 /** Hosts aceitos sem TLS no modo de desenvolvimento: o próprio computador e, de dentro do Docker, o host. */
 const LOCAL_WORLD_HOSTS: readonly string[] = ['127.0.0.1', 'host.docker.internal'];
@@ -202,7 +203,7 @@ export function parseWorldConfig(env: NodeJS.ProcessEnv, argv: string[]): WorldC
   }
   const secure = u.protocol === 'https:' || u.protocol === 'wss:';
   const local = (u.protocol === 'http:' || u.protocol === 'ws:') && LOCAL_WORLD_HOSTS.includes(u.hostname);
-  if (!secure && !(local && dev)) {
+  if (!secure && !(local && (dev || u.origin === DEFAULT_WORLD_URL))) {
     return {
       enabled,
       dev,
@@ -214,6 +215,7 @@ export function parseWorldConfig(env: NodeJS.ProcessEnv, argv: string[]): WorldC
   if (u.username || u.password || u.search || u.hash || (u.pathname !== '/' && u.pathname !== '')) {
     return { enabled, dev, warning: tr('HABBLAUD_WORLD_URL deve ter só o endereço do servidor (sem caminho, usuário, senha ou parâmetros)') };
   }
+  if (!['127.0.0.1', 'localhost', '[::1]', 'host.docker.internal'].includes(u.hostname)) return { enabled, dev, warning: tr('O World privado requer um túnel SSH local.') };
   return { enabled, dev, url: `${secure ? 'https:' : 'http:'}//${u.host}` };
 }
 
@@ -230,6 +232,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, argv: string[] 
   const host = env.HABBLAUD_HOST?.trim() || '127.0.0.1';
   const pkg = readPackage(rootDir);
   const remote = parseRemoteConfig(env, inDocker);
+  const world = parseWorldConfig(env, argv);
+  const clusterOrigin = world.url ?? DEFAULT_WORLD_URL;
   return {
     port: Number.isFinite(port) && port > 0 && port < 65536 ? port : 4747,
     host,
@@ -251,6 +255,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, argv: string[] 
     codex: !env.HABBLAUD_CODEX?.trim() || isTruthy(env.HABBLAUD_CODEX),
     remote: remote.config,
     remoteWarning: remote.warning,
-    world: parseWorldConfig(env, argv),
+    world, clusterOrigin,
   };
 }

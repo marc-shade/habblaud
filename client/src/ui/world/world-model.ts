@@ -393,17 +393,7 @@ export function notifyInactivityOn(v: Pick<WorldVisibility, 'notifyInactivity'> 
 /** Nome do arquivo de "Baixar meus dados" (o mesmo do anexo de GET /api/world/export). */
 export const EXPORT_FILENAME = 'habblaud-world-dados.json';
 
-/** Para onde vão os recursos (conta suspensa ou banida, prédio "não verificado") e os pedidos sobre os dados. */
-export const APPEAL_EMAIL = 'privacidade@habblaud.com';
-
-/** Assunto fixo do recurso (em português: é o filtro da caixa de quem atende), com o id da conta quando se sabe. */
-export const APPEAL_SUBJECT = 'Recurso Habblaud World';
-
-/** O link "Recorrer por e-mail": mailto para APPEAL_EMAIL com o assunto e, se houver, o id da conta. */
-export function appealMailto(accountId?: string): string {
-  const id = accountId && /^[A-Za-z0-9_-]{1,64}$/.test(accountId) ? accountId : '';
-  return `mailto:${APPEAL_EMAIL}?subject=${encodeURIComponent(id ? `${APPEAL_SUBJECT} ${id}` : APPEAL_SUBJECT)}`;
-}
+export const WORLD_SUPPORT_PATH = '/cluster-privacy.txt';
 
 /** O selo de um prédio marcado como "não verificado" (WorldBuildingPublic.unverified), para o cartão da cidade. */
 export function unverifiedLabel(): string {
@@ -661,10 +651,8 @@ export interface BuildingViewOptions {
 }
 
 /** "Recorrer por e-mail", com a explicação ao lado. */
-function appealFor(kind: 'appeal' | 'contest'): { text: string; hint: string } {
-  return kind === 'appeal'
-    ? { text: tr('Recorrer por e-mail'), hint: tr('Abre um e-mail para {0}: conte o que aconteceu, e uma pessoa revê o caso.', [APPEAL_EMAIL]) }
-    : { text: tr('Contestar por e-mail'), hint: tr('Abre um e-mail para {0}: se for engano, uma pessoa revê os números e tira o selo.', [APPEAL_EMAIL]) };
+function appealFor(): { text: string; hint: string } {
+  return { text: tr('Consultar o operador'), hint: tr('Consulte as instruções locais de revisão.') };
 }
 
 /** "1 byte", "1.174 bytes". */
@@ -716,12 +704,12 @@ export function nextVisitorAlert(s: VisitorAlertState, visitors: number | undefi
 export function buildingView(b: WorldBuildingStatus | undefined, hasPlayer: boolean, now: number, opts: BuildingViewOptions = {}): BuildingView {
   const v = buildingViewBase(b, hasPlayer, now, opts);
   // Suspensa ou banida: o recurso por e-mail. Não verificado (e o prédio ainda no mundo): o selo e a contestação.
-  if (v.state === 'stopped' && (b?.stopped === 'banned' || b?.stopped === 'suspended')) return { ...v, appeal: appealFor('appeal') };
+  if (v.state === 'stopped' && (b?.stopped === 'banned' || b?.stopped === 'suspended')) return { ...v, appeal: appealFor() };
   if (b?.unverified && v.state !== 'stopped' && v.state !== 'left' && v.state !== 'no_player') {
     return {
       ...v,
       unverified: tr('O mundo marcou o seu prédio como "não verificado": os números pareceram fora do normal e estão em revisão. Ele continua no mundo, mas fora de placares e destaques.'),
-      appeal: appealFor('contest'),
+      appeal: appealFor(),
     };
   }
   return v;

@@ -2,8 +2,8 @@
 // prédio", pela janela "Ver o que foi enviado" e pelo cartão de convite.
 import { h } from '../dom';
 
-export const WORLD_TERMS_URL = 'https://habblaud.com/world/termos';
-export const WORLD_PRIVACY_URL = 'https://habblaud.com/world/privacidade';
+export const WORLD_TERMS_URL = '/cluster-terms.txt';
+export const WORLD_PRIVACY_URL = '/cluster-privacy.txt';
 
 /** Link para fora (termos, privacidade), sempre em outra aba. */
 export function extLink(text: string, href: string): HTMLAnchorElement {
