@@ -6,6 +6,9 @@ export const EN: Readonly<Record<string, string>> = {
   "Visão geral": "Overview",
   "Aguardando": "Waiting",
   "Shell": "Shell",
+  "verificado {0}": "checked {0}",
+  "{0} em {1}": "{0} in {1}",
+  "{0}º: {1}": "#{0}: {1}",
   // client/src/main.ts
   "Escritório virtual em pixel art que mostra, em tempo real, o que seus agentes do Claude Code estão fazendo.": "Pixel-art virtual office that shows, in real time, what your Claude Code agents are doing.",
 

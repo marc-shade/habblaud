@@ -133,7 +133,7 @@ ela, e o endereço antigo apaga e é desmontado. Assim o prédio não fica com b
 ### 1. Baixe o projeto
 
 ```bash
-git clone https://github.com/marmottajr/habblaud.git
+git clone https://github.com/marc-shade/habblaud.git
 cd habblaud
 npm install
 ```
@@ -299,7 +299,7 @@ rede). No modo Node: `HABBLAUD_REMOTE_PORT` e `HABBLAUD_REMOTE_HOST` (padrão `0
 ### Atualizar
 
 A versão em uso aparece na barra superior, ao lado de "Conectado", e em **Configurações › Sobre**. A cada 6 horas o
-Habblaud confere no GitHub se saiu uma versão nova (as [releases](https://github.com/marmottajr/habblaud/releases)
+Habblaud confere no GitHub se saiu uma versão nova (as [releases](https://github.com/marc-shade/habblaud/releases)
 deste repositório). Quando sai, aparece o selo verde **Nova versão** no lugar do número, com um aviso e um ponto no
 botão de configurações. Em **Sobre** ficam o link do que mudou e o botão **Verificar agora** (as notas de cada
 versão também estão no [`CHANGELOG.md`](CHANGELOG.md)). Para atualizar:
@@ -337,7 +337,7 @@ npm run docker:up        # tira o container codetown e copia os dados do volume 
 - **Variáveis:** as `CODETOWN_*` não valem mais; renomeie para `HABBLAUD_*` no `.env` (ex.: `HABBLAUD_BIND`). O
   servidor e o `docker:up` avisam quando acham uma antiga.
 - **Repositório:** agora é `github.com/marmottajr/habblaud` (o GitHub redireciona o endereço antigo). Para acertar o
-  clone: `git remote set-url origin https://github.com/marmottajr/habblaud.git`. A pasta local pode continuar com o
+  clone: `git remote set-url origin https://github.com/marc-shade/habblaud.git`. A pasta local pode continuar com o
   nome antigo.
 - Backups do `settings.json` feitos antes da troca continuam com o nome `settings.json.codetown-backup-<data>`.
 
@@ -936,7 +936,7 @@ das contas (letra, e-mail, organização) são lidos no host pelo `docker:up` e 
   (`habblaud-mensagens`) é separado justamente porque age: digita na sessão o que você mandou pelo escritório.
 - **Só local, por padrão:** o servidor só aceita conexões do próprio computador; liberar a rede local é opcional.
   Não há telemetria. A única chamada externa é a verificação de versão nova: a cada 6 horas, uma consulta anônima,
-  sem token, à API pública do GitHub (`api.github.com/repos/marmottajr/habblaud/releases/latest`). Ela não envia nada
+  sem token, à API pública do GitHub (`api.github.com/repos/marc-shade/habblaud/releases/latest`). Ela não envia nada
   sobre as suas sessões; o GitHub vê só o seu IP e a versão em uso, que vai no `User-Agent`.
   `HABBLAUD_UPDATE_CHECK=0` desliga a consulta.
   O [Habblaud World](#habblaud-world) (ligado por padrão) só manda algo ao servidor do mundo depois de você criar a

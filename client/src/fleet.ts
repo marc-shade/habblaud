@@ -1,6 +1,5 @@
 import './fleet.css';
 import { OfficeStore } from './net/store';
-import { createWorld } from './world';
 import { providerNames, type FleetSnapshot } from '../../shared/fleet';
 import { getLocale, registerDictionary, tr } from '../../shared/i18n';
 
@@ -11,10 +10,15 @@ async function start() {
   if (language === 'fr') registerDictionary(language, (await import('../../shared/locales/fr')).FR);
   document.documentElement.lang = language;
   const store = new OfficeStore({ mock: false });
+  const { createWorld } = await import('./world');
   const world = createWorld(document.querySelector('canvas')!, store);
   const overview = document.querySelector<HTMLButtonElement>('#overview')!;
   overview.textContent = tr('Visão geral');
-  overview.onclick = () => world.overview();
+  let requestedAgent = new URLSearchParams(location.search).get('agent');
+  overview.onclick = () => {
+    requestedAgent = null;
+    world.overview();
+  };
   const connection = document.querySelector<HTMLElement>('#connection')!;
   const nodes = document.querySelector<HTMLElement>('#nodes')!;
   const stateNames = { online: tr('Conectado'), offline: tr('Desconectado'), connecting: tr('Conectando…') };
@@ -37,6 +41,10 @@ async function start() {
   store.on('snapshot', (value) => {
     document.body.classList.remove('disconnected');
     const snap = value as FleetSnapshot;
+    if (requestedAgent && snap.agents.some((a) => a.id === requestedAgent)) {
+      world.focusAgent(requestedAgent);
+      requestedAgent = null;
+    }
     const online = snap.nodes.filter((n) => n.state === 'online').length;
     connection.textContent = tr('{0}/{1} nós conectados', [online, snap.nodes.length]);
     const next = JSON.stringify([

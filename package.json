@@ -2,13 +2,13 @@
   "name": "habblaud",
   "version": "1.0.3",
   "private": true,
-  "description": "Escritório virtual animado que mostra, em tempo real, o que seus agentes do Claude Code estão fazendo.",
+  "description": "Live virtual office for Claude Code, Codex and Antigravity on a local development fleet.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/marmottajr/habblaud.git"
+    "url": "git+https://github.com/marc-shade/habblaud.git"
   },
-  "homepage": "https://github.com/marmottajr/habblaud#readme",
+  "homepage": "https://github.com/marc-shade/habblaud#readme",
   "type": "module",
   "engines": {
     "node": ">=22.12"

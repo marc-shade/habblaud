@@ -42,6 +42,16 @@ external calls.
 
 This fork adds a read-only office for Claude Code, Codex and agy on macOS and Linux. Build the checkout, then run `npm run fleet`. [Fleet setup and source coverage](FLEET.md)
 
+The maintained branch is `phoenix/fleet-office` in `marc-shade/habblaud`. A fresh clone checks it out by default. To review changes from the original project, add the upstream remote once, then fetch it and inspect its changes.
+
+```sh
+git remote add upstream https://github.com/marmottajr/habblaud.git
+git fetch upstream
+git log --oneline HEAD..upstream/main
+```
+
+Merge upstream updates on a review branch. Run `npm run typecheck`, `npm run i18n:check -- en`, `npm test` and `npm run build` before merging into `phoenix/fleet-office`. Target that branch when opening a pull request in the fork.
+
 ## Contents
 
 - [What it looks like](#what-it-looks-like)
@@ -139,7 +149,7 @@ shrinks on its own.
 ### 1. Get the project
 
 ```bash
-git clone https://github.com/marmottajr/habblaud.git
+git clone https://github.com/marc-shade/habblaud.git
 cd habblaud
 npm install
 ```
@@ -305,7 +315,7 @@ in the clear on the network). In Node mode: `HABBLAUD_REMOTE_PORT` and `HABBLAUD
 ### Updating
 
 The version in use shows up in the top bar, next to "Connected", and in **Settings › About**. Every 6 hours
-Habblaud checks GitHub for a new version (the [releases](https://github.com/marmottajr/habblaud/releases)
+Habblaud checks GitHub for a new version (the [releases](https://github.com/marc-shade/habblaud/releases)
 of this repository). When there is one, the green **New version** badge appears in place of the number, along with a notice and a dot on the
 settings button. **About** has the link to what changed and the **Check now** button (each version's notes
 are also in [`CHANGELOG.md`](CHANGELOG.md)). To update:
@@ -342,9 +352,7 @@ npm run docker:up        # tira o container codetown e copia os dados do volume 
 - **Browser:** preferences and coins move to the new keys the first time the page opens.
 - **Variables:** the `CODETOWN_*` ones no longer work; rename them to `HABBLAUD_*` in `.env` (e.g. `HABBLAUD_BIND`). The
   server and `docker:up` warn you when they find an old one.
-- **Repository:** it's now `github.com/marmottajr/habblaud` (GitHub redirects the old address). To fix your
-  clone: `git remote set-url origin https://github.com/marmottajr/habblaud.git`. The local folder can keep its
-  old name.
+- **Repository:** the original CodeTown project moved to `marmottajr/habblaud`. For this fork, use `marc-shade/habblaud` as `origin` and `marmottajr/habblaud` as `upstream`.
 - `settings.json` backups made before the switch keep the name `settings.json.codetown-backup-<data>`.
 
 ### Uninstalling
@@ -424,12 +432,7 @@ activities and animations. The day/night cycle is still a separate option.
 
 ### Languages
 
-The interface is in **Portuguese, English, Spanish and French**. It follows the browser's language; in
-**Settings › Language** you can pin one (the choice is saved in this browser). The texts the server builds
-(activities, notices, terminal, logs and the install scripts) follow `HABBLAUD_LANG` and, without it, the
-system language, except English: many machines and every container come in English by default, even for people who use another language.
-For the server in English, set `HABBLAUD_LANG=en` (in Docker, in `.env`). Any text without a translation shows up in
-Portuguese.
+The interface starts in English. **Settings › Language** saves an explicit choice of English, Portuguese, Spanish or French. Server activity, notices and logs follow `HABBLAUD_LANG`, then the supported system locale, with English as the fallback.
 
 ### Day, night and sounds
 
@@ -944,7 +947,7 @@ metadata (letter, email, organization) is read on the host by `docker:up` and pa
   (`habblaud-mensagens`) is separate precisely because it acts: it types into the session what you sent from the office.
 - **Local only, by default:** the server only accepts connections from the computer it runs on; opening it to the local network is optional.
   There's no telemetry. The only external call is the new-version check: every 6 hours, an anonymous request,
-  with no token, to the public GitHub API (`api.github.com/repos/marmottajr/habblaud/releases/latest`). It doesn't send anything
+  with no token, to the public GitHub API (`api.github.com/repos/marc-shade/habblaud/releases/latest`). It doesn't send anything
   about your sessions; GitHub only sees your IP and the version in use, which goes in the `User-Agent`.
   `HABBLAUD_UPDATE_CHECK=0` turns off the request.
   [Habblaud World](#habblaud-world) (on by default) only sends something to the world server after you create an

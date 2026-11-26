@@ -39,7 +39,7 @@ interface World {
 /** Registra todos os stubs (antes da primeira chamada em $, como o kit exige) e devolve o que foi capturado. */
 function world(on: On, w: World = {}) {
   const clock = mock.clock(on, { now: NOW })
-  mock.env(on, w.env ?? { HOME: '/home/fulano', CLAUDE_CONFIG_DIR: '~/.claude-conta2,/outra/pasta', HABBLAUD_PORT: PORT })
+  mock.env(on, { HABBLAUD_LANG: 'pt-BR', ...(w.env ?? { HOME: '/home/fulano', CLAUDE_CONFIG_DIR: '~/.claude-conta2,/outra/pasta', HABBLAUD_PORT: PORT }) })
   const writes: Array<{ path: string; text: string }> = []
   const fetches: string[] = []
   const statuses: Array<string | undefined> = []
@@ -217,6 +217,11 @@ describe('linha embaixo do prompt', () => {
 })
 
 describe('/habblaud', () => {
+  test('reports the office in English by default', async ($, on) => {
+    world(on, { env: { HOME: '/home/fulano', HABBLAUD_LANG: 'en' }, answer: () => summary([]) })
+    const out = await $.command.run(RUN)
+    expect(out.text).toContain('working · 0 waiting for you')
+  })
   test('no ar: versão, endereço, contagem e uma linha por quem espera (o escritório inteiro)', async ($, on) => {
     const w = world(on, {
       answer: () => summary([waiting('Valentina', 'loja-virtual', { answerable: true }), waiting('Elias', 'app-mobile', { waitingFor: 'responder no terminal' })]),

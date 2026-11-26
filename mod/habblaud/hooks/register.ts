@@ -74,6 +74,7 @@ export interface Summary {
 type Asked = { kind: 'ok'; summary: Summary } | { kind: 'offline' } | { kind: 'outdated' }
 
 interface ModEnv {
+  english: boolean
   /** Config dir da conta e o id dela (basename), como o tap calcula; sem HOME (ou USERPROFILE) nem CLAUDE_CONFIG_DIR, ausentes. */
   configDir?: string
   accountId?: string
@@ -216,9 +217,15 @@ export function parseSummary(text: string): Summary | undefined {
 }
 
 /** A linha embaixo do prompt: undefined quando ninguém (além desta sessão) precisa de você. */
-export function statusText(waiting: readonly WaitingAgent[]): string | undefined {
+export function statusText(waiting: readonly WaitingAgent[], english = false): string | undefined {
   const first = waiting[0]
   if (!first) return undefined
+  if (english) {
+    if (waiting.length === 1) return `🏢 ${first.name} needs you in ${first.room}`
+    const names = waiting.slice(0, MAX_NAMES).map(w => `${w.name} (${w.room})`).join(', ')
+    const more = waiting.length - MAX_NAMES
+    return `🏢 ${waiting.length} need you: ${names}${more > 0 ? ` and ${more} more` : ''}`
+  }
   if (waiting.length === 1) return `🏢 ${first.name} precisa de você em ${first.room}`
   const shown = waiting.slice(0, MAX_NAMES).map((w) => `${w.name} (${w.room})`)
   const rest = waiting.length - shown.length
@@ -226,7 +233,12 @@ export function statusText(waiting: readonly WaitingAgent[]): string | undefined
 }
 
 /** A resposta do /habblaud com o Habblaud no ar. */
-export function summaryText(s: Summary, url: string): string {
+export function summaryText(s: Summary, url: string, english = false): string {
+  if (english) {
+    const lines = [`Habblaud ${s.version} at ${url}`, `${s.agents} agent${s.agents === 1 ? '' : 's'} · ${s.working} working · ${s.waiting.length} waiting for you`]
+    for (const w of s.waiting) lines.push(`✋ ${w.name} (${w.room}): ${w.waitingFor}${w.answerable ? ' · respond in the office' : ''}`)
+    return lines.join('\n')
+  }
   const agents = s.agents === 1 ? '1 agente' : `${s.agents} agentes`
   const waiting = s.waiting.length === 0 ? 'ninguém precisa de você' : s.waiting.length === 1 ? '1 precisa de você' : `${s.waiting.length} precisam de você`
   const lines = [`Habblaud ${s.version} em ${url}`, `${agents} · ${s.working} trabalhando · ${waiting}`]
@@ -234,11 +246,13 @@ export function summaryText(s: Summary, url: string): string {
   return lines.join('\n')
 }
 
-export function offlineText(url: string): string {
+export function offlineText(url: string, english = false): string {
+  if (english) return `Habblaud is unavailable at ${url}. Check the local office service.`
   return `O Habblaud não respondeu em ${url}. Para subir: npm run docker:up na pasta do Habblaud.`
 }
 
-export function outdatedText(url: string): string {
+export function outdatedText(url: string, english = false): string {
+  if (english) return `The office at ${url} needs an update to support this command.`
   return `O Habblaud em ${url} está numa versão sem a rota do mod. Para atualizar: git pull e npm run docker:up na pasta do Habblaud.`
 }
 
@@ -263,6 +277,7 @@ async function readEnv($: EngineInterface): Promise<ModEnv> {
   const home = (await $.env.get('HOME'))?.trim() || (await $.env.get('USERPROFILE'))?.trim() || undefined
   const configDir = configDirOf(await $.env.get('CLAUDE_CONFIG_DIR'), home)
   const next: ModEnv = {
+    english: !(await $.env.get('HABBLAUD_LANG'))?.toLowerCase().startsWith('pt'),
     port: portOf(await $.env.get('HABBLAUD_PORT')),
     usageDir: usageDirOf(await $.env.get('HABBLAUD_USAGE_DIR'), home),
   }
@@ -350,7 +365,7 @@ async function poll($: EngineInterface): Promise<void> {
       return
     }
     schedule($, POLL_MS)
-    setStatus($, statusText(asked.summary.waiting))
+    setStatus($, statusText(asked.summary.waiting, e.english))
   } catch {
     // silêncio: a próxima rodada tenta de novo
   } finally {
@@ -363,15 +378,15 @@ async function habblaudText($: EngineInterface): Promise<string> {
   const e = await readEnv($)
   const url = `http://localhost:${e.port}`
   const asked = await askHabblaud($, e.port, '')
-  if (asked.kind === 'outdated') return outdatedText(url)
-  if (asked.kind === 'offline') return offlineText(url)
-  return summaryText(asked.summary, url)
+  if (asked.kind === 'outdated') return outdatedText(url, e.english)
+  if (asked.kind === 'offline') return offlineText(url, e.english)
+  return summaryText(asked.summary, url, e.english)
 }
 
 export const register: Register = (on) => {
   on('session.start', async ($, e, next) => {
     try {
-      await $.command.register({ name: 'habblaud', description: 'Resumo do Habblaud: quantos agentes, quem trabalha e quem precisa de você' })
+      await $.command.register({ name: 'habblaud', description: (await readEnv($)).english ? 'See agent activity and pending requests in Habblaud' : 'Resumo do Habblaud: quantos agentes, quem trabalha e quem precisa de você' })
     } catch {
       // sem o comando, o resto segue
     }
@@ -404,7 +419,7 @@ export const register: Register = (on) => {
     try {
       return { text: await habblaudText($) }
     } catch {
-      return { text: offlineText(`http://localhost:${env?.port ?? DEFAULT_PORT}`) }
+      return { text: offlineText(`http://localhost:${env?.port ?? DEFAULT_PORT}`, env?.english ?? true) }
     }
   })
 }

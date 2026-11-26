@@ -1,7 +1,7 @@
 import type { AgentInfo, AgentStatus, OfficeSnapshot, Provider } from './types';
 
 export const providers: Provider[] = ['claude', 'codex', 'agy'];
-export const providerNames: Record<Provider, string> = { claude: 'Claude Code', codex: 'Codex', agy: 'agy' };
+export const providerNames: Record<Provider, string> = { claude: 'Claude Code', codex: 'Codex', agy: 'Antigravity' };
 export interface ObservedSession {
   id: string;
   parent?: string;

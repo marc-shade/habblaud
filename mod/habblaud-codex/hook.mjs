@@ -148,7 +148,8 @@ export function decisionOutput(result) {
   if (result.behavior === 'allow') return { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow' } } };
   if (result.behavior === 'deny') {
     const reason = typeof result.message === 'string' && result.message.trim() ? result.message.trim().slice(0, 1_000) : '';
-    const message = reason ? `Recusado pelo usuário no Habblaud: ${reason}` : 'Recusado pelo usuário no Habblaud.';
+    const denied = /^pt(?:[-_]|$)/i.test(process.env.HABBLAUD_LANG ?? '') ? 'Recusado pelo usuário no Habblaud' : 'Denied by the user in Habblaud';
+    const message = reason ? `${denied}: ${reason}` : `${denied}.`;
     return { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'deny', message } } };
   }
   return undefined;
