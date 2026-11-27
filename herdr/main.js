@@ -1,6 +1,6 @@
 import { View, div } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { exec, run, spaces } from "herdr";
+import { appHome, exec, home, readTextFile, run, settings, spaces } from "herdr";
 
 const office = "http://127.0.0.1:4747";
 const fleet = "http://127.0.0.1:4749";
@@ -55,6 +55,22 @@ export default class Habblaud extends View {
       cx.notify();
     });
   }
+  openFleet(agent, cx) {
+    cx.spawn(async cx => {
+      try {
+        const bundled = appHome() + "/mods/habblaud/open-herdr-fleet.mjs";
+        const checkout = settings().checkout || home() + "/code/habblaud";
+        const helper = await readTextFile(bundled) === null ? checkout + "/scripts/open-herdr-fleet.mjs" : bundled;
+        const args = [helper, ...(agent ? [agent] : [])];
+        const opts = {timeout:95000};
+        const node = settings().node;
+        let result = node ? await exec(node, args, opts) : await exec("/usr/bin/env", ["node", ...args], opts);
+        if (!node && result.code === 127) result = await exec(home() + "/.local/bin/node", args, opts);
+        this.openError = result.code ? result.stderr.trim() || "Could not open the fleet canvas in Herdr" : "";
+      } catch (e) { this.openError = String(e); }
+      cx.notify();
+    });
+  }
   render() {
     const rows = this.snapshot?.nodes || [];
     const node = rows.find(n => n.name === this.node);
@@ -65,7 +81,7 @@ export default class Habblaud extends View {
     const actions = h_flex().gap(8).flex_wrap()
       .child(button("office", "Open full local office", cx => this.open(office + "/?lang=en", cx)))
       .child(button("world", "Open private World", cx => this.open(office + "/?lang=en&panel=world", cx)))
-      .child(button("fleet", "Open fleet canvas", cx => this.open(fleet + "/?lang=en", cx)))
+      .child(button("fleet", "Open fleet canvas", cx => this.openFleet(null, cx)))
       .child(button("refresh", "Refresh", cx => this.refresh(cx)));
     const panel = v_flex().id("habblaud-office").size_full().min_h(0).overflow_y_scroll()
       .p(18).gap(9).bg("#121c22").text_color("#e3edea")
@@ -93,7 +109,7 @@ export default class Habblaud extends View {
     panel.child(section("Sessions · " + agents.length));
     for (const agent of agents) {
       const label = [agent.name, providers[agent.provider] || agent.provider, rooms.get(agent.roomId), agent.status].filter(Boolean).join(" · ");
-      panel.child(button("agent-" + agent.id, label, cx => this.open(fleet + "/?lang=en&agent=" + encodeURIComponent(agent.id), cx)));
+      panel.child(button("agent-" + agent.id, label, cx => this.openFleet(agent.id, cx)));
     }
     if (!agents.length && node.state === "online") panel.child(div().child("No current sessions"));
     if (workspaces.length) panel.child(section("Herdr workspaces")).child(h_flex().gap(6).flex_wrap().children(workspaces.map(s =>

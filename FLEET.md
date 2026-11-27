@@ -6,6 +6,12 @@ Run `npm ci`, `npm run build` and `npm run fleet` at the root of this checkout, 
 
 In the **SDLC/ADLC Orchestrator** workspace, choose **Control Center → Habblaud · Live office**. The native Habblaud tab refreshes every five seconds. Select a node to see its session sources, agents, projects and Herdr workspaces. Select a session to focus that character on the fleet canvas. Local requests that need an operator link to their agent in the full office.
 
+**Open fleet canvas** opens the interactive **Fleet office** tab inside Herdr. Click a session to follow it, drag the canvas to pan, or click **Overview** to zoom out. On the locally maintained macOS build the tab hosts a native WebKit view. It loads the English fleet page directly from loopback and handles navigation, input and display scaling in the browser engine. Herdr versions without the native command use the slower terminal viewer, which requires the checkout's Playwright dependency and a local Chrome or Chromium executable.
+
+The macOS integration is maintained as a [patch for Herdr App v0.1.18](herdr/native-macos.patch). Apply it to a local checkout of the exact upstream tag with submodules initialized, then use Herdr's macOS installer with Xcode, Rust and Zig 0.16.0. The installer places the source build in `~/Applications/Herdr.app`. Rebuild against a reviewed patch when changing Herdr versions. [Herdr App source](https://github.com/herdrdev/herdr-app/tree/v0.1.18)
+
+In the native build, `herdr-app do habblaud.open` opens the office, and the optional `agent` argument accepts a public fleet agent ID. An optional `tab` argument adopts an existing local tab. With Fleet office visible, `herdr-app do habblaud.measure` starts a frame-timing sample. Read its result with `herdr-app do habblaud.status`.
+
 | Surface | What the operator can do |
 | --- | --- |
 | [Fleet canvas](http://127.0.0.1:4749/?lang=en) | Follow Claude Code, Codex and Antigravity across the six nodes. |
@@ -18,6 +24,7 @@ macOS starts the full office using the user LaunchAgent `com.2acrestudios.habbla
 
 ```sh
 cp herdr/main.js herdr/mod.json ~/.config/herdr-app/mods/habblaud/
+ln -sfn "$PWD/scripts/open-herdr-fleet.mjs" ~/.config/herdr-app/mods/habblaud/open-herdr-fleet.mjs
 herdr-app check ~/.config/herdr-app/mods/habblaud
 ```
 
@@ -53,6 +60,12 @@ A local Codex turn returned the requested marker through Ollama and its session 
 
 The office delivered a plain-text message to a dedicated headless Codex session. The native Codex queue contained exactly one copy addressed to that thread. In a separate headless Claude session, the office received a real `Write` request. An automated operator denied it, Claude emitted its permission-denied event and the file stayed absent. Both sessions used a local Ollama model. A Chromium check at a 390-pixel iPhone viewport opened a fleet session, returned to Overview and displayed the English office with no uncaught page errors.
 
+The office also sent a fresh challenge to a persistent Codex session. The native rollout recorded its local Ollama reply without a second prompt. A separate native Claude Code session received the office challenge and generated the expected reply when explicitly resumed on the same transcript with local Ollama.
+
+Clicking a live session in the native Habblaud panel opened its character's room in **Fleet office**. **Open fleet canvas** returned the same terminal to the six-node overview. Two concurrent launch requests created one viewer. A separate recovery check reopened the viewer in its original tab after the viewer was stopped and its terminal returned to a shell.
+
+The native renderer was compared with foreground Chrome at a 1550 × 814 viewport on a 60 Hz display. Chrome completed 59.97 world draws per second in each of two camera pans. Herdr's WebKit view delivered 59.94 to 60.12 animation callbacks per second in three physical drag samples, with changing canvas pixels and a 95th-percentile frame interval of 17 to 18 ms. The earlier terminal path delivered three complete changed PNGs during an eight-second drag. These measurements cover application rendering and transport. Physical display scanout was outside the test.
+
 ## Private cluster services
 
 The full office and the Herdr fleet view run on the Mac orchestrator. Fedora runs the private World and release catalog under its user systemd manager. The Mac launch agent `com.2acrestudios.habblaud.world-tunnel` forwards loopback port 4761 to Fedora. The office keeps a separate device credential for each World origin. The release catalog uses the closest version tag in the local office checkout.
@@ -65,4 +78,4 @@ AI Lab holds both primary Git repositories under the owner’s SSH account. The 
 
 The passive Codex reader can lag tool execution and miss approval waits. Recent agy file activity cannot establish whether a process is still running. Hashes are stable identifiers, not anonymization. Anyone with access to the coordinator's loopback interface can read the displayed project names and activity. The fleet viewer has no approval, messaging or command endpoints.
 
-The November 26 checks left the production World account signed out. Access from a physical phone, human approval of a tool call, and recovery following a Mac reboot remain unverified. Codex queue delivery was confirmed. A dedicated native Claude session also displayed the exact plain-text message from the office and acknowledged delivery. The recipient had inference disabled for that check. A model-generated reply to either delivered message remains unverified. Office and fleet listeners are loopback-only.
+The November 26 checks left the production World account signed out. Access from a physical phone, human approval of a tool call, recovery following a Mac reboot and a fully unattended Claude reply remain unverified. Office and fleet listeners are loopback-only.

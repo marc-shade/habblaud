@@ -1,0 +1,909 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 39102fc..c30ef51 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -3701,6 +3701,7 @@ dependencies = [
+  "anyhow",
+  "async-channel",
+  "base64",
++ "cc",
+  "fancy-regex 0.19.2",
+  "ghostty-sys",
+  "gpui-base",
+diff --git a/Cargo.toml b/Cargo.toml
+index f935250..d3d7981 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -61,6 +61,7 @@ libc = "0.2"
+
+ [target.'cfg(target_os = "macos")'.dependencies]
+ gpui_macos = { package = "gpui-pre-macos", version = "=0.3.8", features = ["render-to-image"] }
++raw-window-handle = "0.6"
+ objc2 = "0.6"
+ objc2-app-kit = { version = "0.3.2", default-features = false, features = ["NSApplication", "NSDockTile", "NSResponder"] }
+ objc2-foundation = { version = "0.3.2", default-features = false, features = ["NSString"] }
+@@ -74,6 +75,9 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_Wind
+ [target.'cfg(windows)'.build-dependencies]
+ winresource = "0.1"
+
++[target.'cfg(target_os = "macos")'.build-dependencies]
++cc = "1"
++
+ # gpui-shell's LLRT modules must share its quickjs-jit VM; gpui-kit's own workspace does the same.
+ [patch.crates-io]
+ # HERDR: production frame capture without test-support dependencies.
+diff --git a/THIRD-PARTY-NOTICES b/THIRD-PARTY-NOTICES
+index ef9738c..7425db3 100644
+--- a/THIRD-PARTY-NOTICES
++++ b/THIRD-PARTY-NOTICES
+@@ -3,7 +3,7 @@ Herdr third-party notices
+ Regenerate with just notices. See licenses/README.md.
+
+ Input-SHA256: 6a3b4177337bfb82680d2992e24b5f948c0c4ce524bafa5b1c8cf8090f45adba Cargo.lock
+-Input-SHA256: 43f3b08fc78eb839bd309d812e073b408ac644e0923e48a12827f41dcefee9cd Cargo.toml
++Input-SHA256: 77dda446a6d445f785603c24353b78db008e150f4a10427e1da067e59fe38d35 Cargo.toml
+ Input-SHA256: c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4 LICENSE
+ Input-SHA256: e58cb0de2dde300bcda769ca993fde2737f42c0274082f038621ab22975a49e2 about.toml
+ Input-SHA256: 84a7a98c82140fb12c37fe42b93805baa16024cb3e5acc599b7ffe612c55d847 assets/fonts/LICENSE-SymbolsNerdFont.txt
+@@ -2753,7 +2753,7 @@ Apache License 2.0 (Apache-2.0)
+
+ ----------------------------------------------------------------------
+ Apache License 2.0 (Apache-2.0)
+-  herdr-app 0.1.16
++  herdr-app 0.1.18
+
+                                  Apache License
+                            Version 2.0, January 2004
+@@ -2959,7 +2959,7 @@ Apache License 2.0 (Apache-2.0)
+
+ ----------------------------------------------------------------------
+ Apache License 2.0 (Apache-2.0)
+-  herdr-app 0.1.16
++  herdr-app 0.1.18
+   codespan-reporting 0.13.1 — https://github.com/brendanzab/codespan
+   crypto-primes 0.7.2 — https://github.com/entropyxyz/crypto-primes
+   self_cell 1.3.0 — https://github.com/Voultapher/self_cell
+@@ -12015,12 +12015,12 @@ limitations under the License.
+
+ ----------------------------------------------------------------------
+ Apache License 2.0 (Apache-2.0)
+-  herdr-app 0.1.16
+-  herdr-app 0.1.16
+-  herdr-app 0.1.16
+-  herdr-app 0.1.16
+-  herdr-app 0.1.16
+-  herdr-app 0.1.16
++  herdr-app 0.1.18
++  herdr-app 0.1.18
++  herdr-app 0.1.18
++  herdr-app 0.1.18
++  herdr-app 0.1.18
++  herdr-app 0.1.18
+   gpui-pre 0.3.8 — https://github.com/zed-industries/zed
+   gpui-pre-apple 0.3.8 — https://github.com/zed-industries/zed
+   gpui-pre-linux 0.3.8 — https://github.com/zed-industries/zed
+@@ -12270,8 +12270,8 @@ Apache License
+
+ ----------------------------------------------------------------------
+ Apache License 2.0 (Apache-2.0)
+-  herdr-app 0.1.16
+-  herdr-app 0.1.16
++  herdr-app 0.1.18
++  herdr-app 0.1.18
+   gpui-base 0.7.1 — https://github.com/longbridge/gpui-kit
+
+ Copyright 2024 - 2026 Longbridge <https://longbridge.com>
+diff --git a/build.rs b/build.rs
+index bb389a1..4c9df56 100644
+--- a/build.rs
++++ b/build.rs
+@@ -34,6 +34,13 @@ fn embed(base: &Path, folder: &str, name: &str, file: &str) {
+ }
+
+ fn main() {
++    #[cfg(target_os = "macos")]
++    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
++        println!("cargo:rerun-if-changed=src/fleet_webview.m");
++        cc::Build::new().file("src/fleet_webview.m").flag("-fobjc-arc").flag("-fblocks").compile("herdr_fleet_webview");
++        println!("cargo:rustc-link-lib=framework=WebKit");
++        println!("cargo:rustc-link-lib=framework=AppKit");
++    }
+     let base = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+     embed(&base, "defaults/mods", "DEFAULT_MODS", "default_mods.rs");
+     embed(&base, "defaults/icons", "DEFAULT_ICONS", "default_icons.rs");
+diff --git a/defaults/AGENTS.md b/defaults/AGENTS.md
+index 75ab98a..1e1ca11 100644
+--- a/defaults/AGENTS.md
++++ b/defaults/AGENTS.md
+@@ -604,6 +604,10 @@ The main ones:
+   `space.close {id?, confirmed?}`, `space.rename {id?, name}` ("": Herdr's name again),
+   `space.move {id, index}`, `space.select {index | id}`, `space.next`, `space.prev`.
+   With no `argv`, the target core chooses that machine's default shell (PowerShell 7 when available on Windows).
++- On the local macOS build, `habblaud.open {agent?, tab?}` selects the native Fleet office.
++  Supplying a local tab ID adopts that tab, keeps its terminals and zooms the new office pane.
++  `habblaud.measure` starts a frame-timing sample while the office is visible.
++  `habblaud.status` reads the browser state and the latest sample.
+ - Tabs: `tab.new {name?, space?, folder?, argv?, task?, focus?}` (argv: an
+   agent to run, task: its first message). Agents run in your interactive
+   shell (including fish), which stays open after the agent exits. A terminal
+diff --git a/scripts/install-macos b/scripts/install-macos
+index c12a1a3..18f2130 100755
+--- a/scripts/install-macos
++++ b/scripts/install-macos
+@@ -3,15 +3,16 @@ set -euo pipefail
+
+ [[ $(uname -s) == Darwin ]] || { echo 'This installer requires macOS.' >&2; exit 1; }
+ cd "$(dirname "$0")/.."
+-cargo build --release
++cargo build --release --locked
+
+ app="$HOME/Applications/Herdr.app"
+ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$HOME/.local/bin"
+ # Replace atomically so installing does not interrupt a running Herdr.
+-cp target/release/herdr-app "$app/Contents/MacOS/Herdr.new"
++cp "${CARGO_TARGET_DIR:-target}/release/herdr-app" "$app/Contents/MacOS/Herdr.new"
+ mv -f "$app/Contents/MacOS/Herdr.new" "$app/Contents/MacOS/Herdr"
+ chmod +x "$app/Contents/MacOS/Herdr"
+ cp assets/icons/Herdr.icns "$app/Contents/Resources/Herdr.icns"
++cp LICENSE THIRD-PARTY-NOTICES "$app/Contents/Resources/"
+
+ cat > "$app/Contents/Info.plist" <<'PLIST'
+ <?xml version="1.0" encoding="UTF-8"?>
+@@ -30,9 +31,11 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
+     <key>NSAppleEventsUsageDescription</key><string>Terminal programs running in Herdr can use AppleScript to control other apps.</string>
+     <key>NSPrincipalClass</key><string>NSApplication</string>
+     <key>NSHighResolutionCapable</key><true/>
++    <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
+     <key>LSEnvironment</key><dict/></dict></plist>
+ PLIST
+ # Finder does not inherit a login shell's PATH; hc must still be discoverable.
++/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $("$app/Contents/MacOS/Herdr" --version | awk '{print $2}')" "$app/Contents/Info.plist"
+ /usr/libexec/PlistBuddy -c "Add :LSEnvironment:PATH string $HOME/.local/bin:/opt/homebrew/bin:$PATH" "$app/Contents/Info.plist"
+ codesign --force --sign - "$app"
+ ln -sfn "$app/Contents/MacOS/Herdr" "$HOME/.local/bin/herdr-app"
+diff --git a/src/SKILL.md b/src/SKILL.md
+index bc52d7c..924bacd 100644
+--- a/src/SKILL.md
++++ b/src/SKILL.md
+@@ -36,6 +36,10 @@ To start one the person will look at later without moving them there, pass
+ herdr-app do space.new --name eng-123 --folder ~/code/app/eng-123 --argv '["claude"]' --task "Implement ENG-123" --focus false
+ ```
+
++On this macOS build, `herdr-app do habblaud.open` opens the local fleet canvas.
++Pass `--agent` and a fleet agent ID to select a session. Use `herdr-app do habblaud.measure`
++in the visible office and read the result with `herdr-app do habblaud.status`.
++
+ Pick an explicit, useful name for every new space and tab; don't rely on
+ default names. Use IDs from `ls` rather than guessing or acting on the wrong
+ focused pane.
+diff --git a/src/commands.rs b/src/commands.rs
+index 0538156..420db6d 100644
+--- a/src/commands.rs
++++ b/src/commands.rs
+@@ -104,6 +104,12 @@ pub const COMMANDS: &[Command] = &[
+     cmd("app.zoom_out", &[], "Make everything smaller."),
+     cmd("app.zoom_reset", &[], "Back to normal size."),
+     cmd("app.update", &[], "Restart into the update Herdr downloaded (your terminals keep running)."),
++    #[cfg(target_os = "macos")]
++    cmd("habblaud.open", &[opt("agent"), opt("tab")], "Open the local Habblaud fleet office. Optionally select an agent or adopt a local tab."),
++    #[cfg(target_os = "macos")]
++    cmd("habblaud.status", &[], "Read the native fleet view status and its most recent frame measurements."),
++    #[cfg(target_os = "macos")]
++    cmd("habblaud.measure", &[], "Measure animation frame intervals in the visible fleet office."),
+     cmd("app.quit", &[], "Quit (macOS)."),
+     cmd("app.hide", &[], "Hide the app (macOS)."),
+     cmd("app.hide_others", &[], "Hide other apps (macOS)."),
+diff --git a/src/fleet_webview.m b/src/fleet_webview.m
+new file mode 100644
+index 0000000..bb0102f
+--- /dev/null
++++ b/src/fleet_webview.m
+@@ -0,0 +1,306 @@
++// The GPUI view owns this browser just as it owns its AppKit subviews. The
++// browser never accepts a caller-supplied URL, script, or navigation action.
++#import <AppKit/AppKit.h>
++#import <WebKit/WebKit.h>
++#import <objc/runtime.h>
++#include <stdbool.h>
++
++static NSString *const fleetURL = @"http://127.0.0.1:4749/?lang=en";
++static const char fleetKey;
++
++static BOOL fleetDocument(NSURL *url) {
++    return [url.scheme isEqualToString:@"http"] && [url.host isEqualToString:@"127.0.0.1"]
++        && [url.port isEqualToNumber:@4749] && [url.path isEqualToString:@"/"]
++        && !url.user && !url.password && !url.fragment && (!url.query || [url.query isEqualToString:@"lang=en"]);
++}
++
++@interface HerdrFleet : NSObject <WKNavigationDelegate, WKUIDelegate>
++@property(weak) NSView *host;
++@property(strong) NSView *container;
++@property(strong) WKWebView *web;
++@property(strong) NSTextField *message;
++@property(strong) NSButton *retry;
++@property(strong) id keyMonitor;
++@property(copy) NSString *state;
++@property(copy) NSString *error;
++@property(copy) NSString *agent;
++@property(copy) NSString *selectionState;
++@property(copy) NSDictionary *metrics;
++@property BOOL requested;
++@property BOOL measuring;
++@property NSUInteger selectionGeneration;
++@property NSUInteger measurementGeneration;
++- (void)mount;
++- (void)hide;
++- (void)dispose;
++- (void)applySelection;
++- (BOOL)measure;
++@end
++
++@implementation HerdrFleet
++- (instancetype)init {
++    if ((self = [super init])) {
++        _state = @"unmounted";
++        _selectionState = @"none";
++    }
++    return self;
++}
++- (void)mount {
++    if (self.container) return;
++    self.container = [[NSView alloc] initWithFrame:NSZeroRect];
++    self.container.wantsLayer = YES;
++    self.container.layer.backgroundColor = NSColor.windowBackgroundColor.CGColor;
++    [self.host addSubview:self.container positioned:NSWindowAbove relativeTo:nil];
++    self.message = [NSTextField wrappingLabelWithString:@"Opening local Fleet office…"];
++    self.retry = [NSButton buttonWithTitle:@"Retry local Fleet office" target:self action:@selector(start:)];
++    for (NSView *control in @[self.message, self.retry]) {
++        control.translatesAutoresizingMaskIntoConstraints = NO;
++        [self.container addSubview:control];
++    }
++    [NSLayoutConstraint activateConstraints:@[
++        [self.message.centerXAnchor constraintEqualToAnchor:self.container.centerXAnchor],
++        [self.message.centerYAnchor constraintEqualToAnchor:self.container.centerYAnchor],
++        [self.message.widthAnchor constraintLessThanOrEqualToAnchor:self.container.widthAnchor multiplier:.85],
++        [self.retry.centerXAnchor constraintEqualToAnchor:self.container.centerXAnchor],
++        [self.retry.topAnchor constraintEqualToAnchor:self.message.bottomAnchor constant:8]
++    ]];
++    __weak HerdrFleet *weakSelf = self;
++    self.keyMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:^NSEvent *(NSEvent *event) {
++        HerdrFleet *s = weakSelf;
++        if (!s || !s.web || s.container.hidden || event.window != s.host.window) return event;
++        NSResponder *responder = event.window.firstResponder;
++        if (![responder isKindOfClass:NSView.class] || ![(NSView *)responder isDescendantOf:s.web]) return event;
++        NSEventModifierFlags modifiers = event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask;
++        BOOL command = (modifiers & NSEventModifierFlagCommand) != 0;
++        NSString *key = event.charactersIgnoringModifiers.lowercaseString ?: @"";
++        // Leave Ctrl+letters with WebKit. Passing them to the GPUI key handler
++        // could interrupt a terminal beneath the browser.
++        unichar digit = key.length == 1 ? [key characterAtIndex:0] : 0;
++        BOOL ctrlNavigation = (modifiers & NSEventModifierFlagControl) &&
++            (event.keyCode == 48 || (digit >= '1' && digit <= '9'));
++        if (!command && !ctrlNavigation) return event;
++        // Let WebKit own editing and selection; routed chords use GPUI's current keymap.
++        if (modifiers == NSEventModifierFlagCommand && [@[@"a",@"c",@"v",@"x",@"z"] containsObject:key]) return event;
++        return [s.host performKeyEquivalent:event] ? nil : event;
++    }];
++    [self start:nil];
++}
++- (void)failure:(NSString *)reason {
++    self.state = @"error";
++    self.error = reason;
++    self.message.stringValue = reason;
++    self.message.hidden = NO;
++    self.retry.hidden = NO;
++    self.web.hidden = YES;
++}
++- (void)start:(id)sender {
++    self.retry.hidden = YES;
++    self.error = nil;
++    self.message.stringValue = @"Opening local Fleet office…";
++    self.message.hidden = NO;
++    self.state = @"loading";
++    if (self.web) {
++        [self.web loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:fleetURL]]];
++        return;
++    }
++    // Compile before the first request; failure leaves only the native error view.
++    NSString *rules = @"[{\"trigger\":{\"url-filter\":\".*\"},\"action\":{\"type\":\"block\"}},"
++        "{\"trigger\":{\"url-filter\":\"^http://127[.]0[.]0[.]1:4749/\"},\"action\":{\"type\":\"ignore-previous-rules\"}}]";
++    __weak HerdrFleet *weakSelf = self;
++    [WKContentRuleListStore.defaultStore compileContentRuleListForIdentifier:@"HerdrLoopbackFleet-v1" encodedContentRuleList:rules
++        completionHandler:^(WKContentRuleList *list, NSError *error) {
++        HerdrFleet *s = weakSelf;
++        if (!s || !s.container) return;
++        if (!list) { [s failure:error.localizedDescription ?: @"Local Fleet resource policy failed to load."]; return; }
++        WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
++        config.websiteDataStore = WKWebsiteDataStore.nonPersistentDataStore;
++        config.preferences.javaScriptCanOpenWindowsAutomatically = NO;
++        [config.userContentController addContentRuleList:list];
++        s.web = [[WKWebView alloc] initWithFrame:s.container.bounds configuration:config];
++        s.web.navigationDelegate = s;
++        s.web.UIDelegate = s;
++        s.web.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++        [s.container addSubview:s.web positioned:NSWindowBelow relativeTo:s.message];
++        [s.web loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:fleetURL]]];
++    }];
++}
++- (void)webView:(WKWebView *)web decidePolicyForNavigationAction:(WKNavigationAction *)action decisionHandler:(void (^)(WKNavigationActionPolicy))decide {
++    BOOL allowed = action.targetFrame && action.targetFrame.mainFrame && fleetDocument(action.request.URL)
++        && [action.request.HTTPMethod isEqualToString:@"GET"];
++    if (!allowed && [self.state isEqual:@"loading"] && action.targetFrame.mainFrame) {
++        [self failure:@"The Fleet office tried to leave its local page."];
++    }
++    decide(allowed ? WKNavigationActionPolicyAllow : WKNavigationActionPolicyCancel);
++}
++- (void)webView:(WKWebView *)web decidePolicyForNavigationResponse:(WKNavigationResponse *)response decisionHandler:(void (^)(WKNavigationResponsePolicy))decide {
++    BOOL ok = response.forMainFrame && fleetDocument(response.response.URL) && [response.response.MIMEType isEqualToString:@"text/html"];
++    if (!ok && [self.state isEqual:@"loading"] && response.forMainFrame) {
++        [self failure:@"The local Fleet office did not return its HTML page."];
++    }
++    if (ok && [response.response isKindOfClass:NSHTTPURLResponse.class]) {
++        NSInteger code = [(NSHTTPURLResponse *)response.response statusCode];
++        ok = code >= 200 && code < 300;
++        if (!ok) [self failure:[NSString stringWithFormat:@"Local Fleet office returned HTTP %ld.", (long)code]];
++    }
++    decide(ok ? WKNavigationResponsePolicyAllow : WKNavigationResponsePolicyCancel);
++}
++- (WKWebView *)webView:(WKWebView *)web createWebViewWithConfiguration:(WKWebViewConfiguration *)config
++     forNavigationAction:(WKNavigationAction *)action windowFeatures:(WKWindowFeatures *)features { return nil; }
++- (void)webView:(WKWebView *)web didFinishNavigation:(WKNavigation *)navigation {
++    if (!fleetDocument(web.URL)) return;
++    self.state = @"ready";
++    self.error = nil;
++    self.message.hidden = YES;
++    self.retry.hidden = YES;
++    web.hidden = NO;
++    [self applySelection];
++}
++- (void)webView:(WKWebView *)web didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error {
++    if (error.code != NSURLErrorCancelled) [self failure:error.localizedDescription];
++}
++- (void)webView:(WKWebView *)web didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error {
++    if (error.code != NSURLErrorCancelled) [self failure:error.localizedDescription];
++}
++- (void)webViewWebContentProcessDidTerminate:(WKWebView *)web {
++    self.measurementGeneration++;
++    self.measuring = NO;
++    [self failure:@"The Fleet office browser process stopped."];
++}
++- (void)hide {
++    if (!self.container || self.container.hidden) return;
++    NSResponder *responder = self.host.window.firstResponder;
++    if ([responder isKindOfClass:NSView.class] && [(NSView *)responder isDescendantOf:self.container]) {
++        [self.host.window makeFirstResponder:self.host];
++    }
++    self.container.hidden = YES;
++    if (self.measuring) {
++        self.measuring = NO;
++        self.measurementGeneration++;
++        self.metrics = @{@"state":@"cancelled", @"reason":@"Fleet office was hidden during measurement"};
++    }
++}
++- (void)dispose {
++    [self hide];
++    if (self.keyMonitor) [NSEvent removeMonitor:self.keyMonitor];
++    self.keyMonitor = nil;
++    self.web.navigationDelegate = nil;
++    self.web.UIDelegate = nil;
++    [self.web stopLoading];
++    [self.container removeFromSuperview];
++    self.web = nil;
++    self.container = nil;
++}
++- (void)dealloc {
++    if (_keyMonitor) [NSEvent removeMonitor:_keyMonitor];
++}
++- (void)applySelection {
++    if (!self.requested || ![self.state isEqual:@"ready"] || !self.web) return;
++    self.selectionState = @"pending";
++    NSUInteger generation = ++self.selectionGeneration;
++    // Arguments are structured WebKit values in an isolated JavaScript world.
++    // A new request cancels the preceding DOM wait even if its agent appears later.
++    NSString *body = @"if(globalThis.cancelFleetSelection)globalThis.cancelFleetSelection();"
++        "return await new Promise(resolve=>{"
++        "let observer,timer;const finish=x=>{observer?.disconnect();clearTimeout(timer);"
++        "delete globalThis.cancelFleetSelection;resolve(x)};"
++        "globalThis.cancelFleetSelection=()=>finish('superseded');"
++        "const select=()=>{const button=agent===null?document.querySelector('#overview'):"
++        "Array.from(document.querySelectorAll('button[data-agent]')).find(e=>e.dataset.agent===agent);"
++        "if(!button || typeof button.onclick!=='function' && !document.querySelector('#nodes article'))return;"
++        "button.click();finish('selected')};"
++        "observer=new MutationObserver(select);observer.observe(document.body,{childList:true,subtree:true});"
++        "timer=setTimeout(()=>finish('unavailable'),15000);select()});";
++    __weak HerdrFleet *weakSelf = self;
++    [self.web callAsyncJavaScript:body arguments:@{@"agent":self.agent ?: NSNull.null} inFrame:nil inContentWorld:WKContentWorld.defaultClientWorld
++        completionHandler:^(id value, NSError *error) {
++        HerdrFleet *s = weakSelf;
++        if (!s || s.selectionGeneration != generation) return;
++        s.selectionState = error ? @"failed" : ([value isKindOfClass:NSString.class] ? value : @"failed");
++        if (error) s.error = error.localizedDescription;
++    }];
++}
++- (BOOL)measure {
++    if (self.measuring || !self.container || self.container.hidden || ![self.state isEqual:@"ready"] || !self.host.window.visible) return NO;
++    self.measuring = YES;
++    self.metrics = @{@"state":@"sampling"};
++    NSUInteger generation = ++self.measurementGeneration;
++    // No sampling in normal operation. Compare the browser's actual fleet canvas
++    // at the ends of the run and keep pixel readbacks outside the timed interval.
++    NSString *body = @"const c=document.querySelector('canvas#world');"
++        "if(!c||!c.width||!c.height||document.visibilityState!=='visible')throw Error('Visible fleet canvas required');"
++        "const tiny=document.createElement('canvas');tiny.width=128;tiny.height=72;"
++        "const ctx=tiny.getContext('2d',{willReadFrequently:true});"
++        "const pixels=()=>{ctx.drawImage(c,0,0,128,72);return ctx.getImageData(0,0,128,72).data};"
++        "const first=pixels(),ts=[];"
++        "await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Frame sample timed out')),10000);"
++        "const tick=t=>{ts.push(t);if(ts.length===121){clearTimeout(timer);resolve()}else requestAnimationFrame(tick)};requestAnimationFrame(tick)});"
++        "const last=pixels(),dt=ts.slice(1).map((t,i)=>t-ts[i]).sort((a,b)=>a-b);"
++        "let changed=0;for(let i=0;i<last.length;i+=4)if(first[i]!==last[i]||first[i+1]!==last[i+1]||first[i+2]!==last[i+2])changed++;"
++        "return {state:'complete',intervals:120,elapsedMs:ts[120]-ts[0],fps:120000/(ts[120]-ts[0]),"
++        "medianMs:(dt[59]+dt[60])/2,p95Ms:dt[113],maxMs:dt[119],changedSamplePixels:changed,"
++        "canvasWidth:c.width,canvasHeight:c.height,devicePixelRatio:devicePixelRatio,"
++        "locale:document.documentElement.lang,agentButtons:document.querySelectorAll('button[data-agent]').length};";
++    __weak HerdrFleet *weakSelf = self;
++    [self.web callAsyncJavaScript:body arguments:@{} inFrame:nil inContentWorld:WKContentWorld.defaultClientWorld
++        completionHandler:^(id result, NSError *error) {
++        HerdrFleet *s = weakSelf;
++        if (!s || generation != s.measurementGeneration) return;
++        s.measuring = NO;
++        s.metrics = !error && [result isKindOfClass:NSDictionary.class] ? result
++            : @{@"state":@"failed", @"error":error.localizedDescription ?: @"Invalid frame statistics"};
++    }];
++    return YES;
++}
++@end
++
++static HerdrFleet *session(void *native, BOOL create) {
++    NSView *host = (__bridge NSView *)native;
++    HerdrFleet *s = objc_getAssociatedObject(host, &fleetKey);
++    if (!s && create) {
++        s = [[HerdrFleet alloc] init];
++        s.host = host;
++        objc_setAssociatedObject(host, &fleetKey, s, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++    }
++    return s;
++}
++void herdr_fleet_render(void *view, double x, double y, double width, double height) {
++    HerdrFleet *s = session(view, YES);
++    NSRect b = s.host.bounds;
++    if (!isfinite(x) || !isfinite(y) || !isfinite(width) || !isfinite(height) || width <= 0 || height <= 0) { [s hide]; return; }
++    NSRect frame = NSMakeRect(NSMinX(b)+x, s.host.flipped ? NSMinY(b)+y : NSMaxY(b)-y-height, width, height);
++    frame = NSIntersectionRect(frame, b);
++    if (NSIsEmptyRect(frame)) { [s hide]; return; }
++    [s mount];
++    if (!NSEqualRects(s.container.frame, frame)) s.container.frame = frame;
++    if (s.container.hidden) s.container.hidden = NO;
++}
++void herdr_fleet_hide(void *view) { [session(view, NO) hide]; }
++void herdr_fleet_detach(void *view) {
++    [session(view, NO) dispose];
++    objc_setAssociatedObject((__bridge NSView *)view, &fleetKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++}
++void herdr_fleet_select(void *view, const char *agent) {
++    HerdrFleet *s = session(view, YES);
++    s.requested = YES;
++    s.agent = agent ? [NSString stringWithUTF8String:agent] : nil;
++    s.selectionState = @"pending";
++    [s applySelection];
++}
++bool herdr_fleet_measure(void *view) { return [session(view, NO) measure]; }
++char *herdr_fleet_status(void *view) {
++    HerdrFleet *s = session(view, NO);
++    NSRect r = s.container.frame;
++    NSNumber *maxFPS = nil;
++    if (@available(macOS 12.0, *)) maxFPS = @(s.host.window.screen.maximumFramesPerSecond);
++    NSDictionary *summary = @{
++        @"renderer":@"WKWebView", @"state":s.state ?: @"unmounted", @"visible":@(s.container && !s.container.hidden && s.host.window.visible),
++        @"selection":s.selectionState ?: @"none", @"requestedAgent":s.agent ?: NSNull.null,
++        @"measurement":s.metrics ?: NSNull.null, @"loadError":s.error ?: NSNull.null,
++        @"framePoints":@{@"x":@(r.origin.x),@"y":@(r.origin.y),@"width":@(r.size.width),@"height":@(r.size.height)},
++        @"backingScale":@(s.host.window.backingScaleFactor), @"screenMaxFPS":maxFPS ?: NSNull.null
++    };
++    NSData *data = [NSJSONSerialization dataWithJSONObject:summary options:0 error:nil];
++    NSString *text = data ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : nil;
++    return text ? strdup(text.UTF8String) : NULL;
++}
++void herdr_fleet_free(char *text) { free(text); }
+diff --git a/src/fleet_webview.rs b/src/fleet_webview.rs
+new file mode 100644
+index 0000000..7a9ee19
+--- /dev/null
++++ b/src/fleet_webview.rs
+@@ -0,0 +1,106 @@
++//! A single local Habblaud viewport, retained by the GPUI window that owns it.
++//! AppKit access is synchronous on GPUI's UI thread. WebKit owns rendering.
++use gpui::{Bounds, Pixels, Window};
++use raw_window_handle::{HasWindowHandle, RawWindowHandle};
++use serde_json::{Value, json};
++use std::ffi::{CStr, CString, c_char, c_void};
++
++unsafe extern "C" {
++    fn herdr_fleet_render(view: *mut c_void, x: f64, y: f64, width: f64, height: f64);
++    fn herdr_fleet_hide(view: *mut c_void);
++    fn herdr_fleet_detach(view: *mut c_void);
++    fn herdr_fleet_select(view: *mut c_void, agent: *const c_char);
++    fn herdr_fleet_measure(view: *mut c_void) -> bool;
++    fn herdr_fleet_status(view: *mut c_void) -> *mut c_char;
++    fn herdr_fleet_free(text: *mut c_char);
++}
++
++fn native(window: &Window) -> Option<*mut c_void> {
++    match HasWindowHandle::window_handle(window).ok()?.as_raw() {
++        RawWindowHandle::AppKit(handle) => Some(handle.ns_view.as_ptr()),
++        _ => None,
++    }
++}
++pub fn render(window: &mut Window, bounds: Bounds<Pixels>) {
++    if let Some(view) = native(window) {
++        let points = |p: Pixels| f64::from(f32::from(p));
++        // SAFETY: the platform owns this NSView until the UI-thread call returns.
++        unsafe {
++            herdr_fleet_render(
++                view,
++                points(bounds.origin.x),
++                points(bounds.origin.y),
++                points(bounds.size.width),
++                points(bounds.size.height),
++            )
++        };
++    }
++}
++pub fn hide(window: &mut Window) {
++    if let Some(view) = native(window) {
++        unsafe { herdr_fleet_hide(view) };
++    }
++}
++pub fn detach(window: &mut Window) {
++    if let Some(view) = native(window) {
++        unsafe { herdr_fleet_detach(view) };
++    }
++}
++pub(crate) fn public_id(value: &str) -> bool {
++    let Some((host, digest)) = value.split_once(':') else { return false };
++    (1..=128).contains(&host.len())
++        && host.as_bytes()[0].is_ascii_alphanumeric()
++        && host.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-'))
++        && digest.len() == 24
++        && digest.bytes().all(|c| c.is_ascii_digit() || matches!(c, b'a'..=b'f'))
++}
++pub fn select(window: &mut Window, agent: Option<&str>) -> Result<(), String> {
++    if agent.is_some_and(|id| !public_id(id)) {
++        return Err("Expected a public fleet agent ID".into());
++    }
++    let agent = agent.map(CString::new).transpose().map_err(|_| "Invalid fleet agent ID")?;
++    let view = native(window).ok_or("Native Habblaud requires an AppKit window")?;
++    // The native side copies the validated string synchronously.
++    unsafe { herdr_fleet_select(view, agent.as_ref().map_or(std::ptr::null(), |s| s.as_ptr())) };
++    Ok(())
++}
++pub fn measure(window: &mut Window) -> Result<(), String> {
++    let view = native(window).ok_or("Native Habblaud requires an AppKit window")?;
++    if unsafe { herdr_fleet_measure(view) } {
++        Ok(())
++    } else {
++        Err("Show the loaded Fleet office before measuring it; only one measurement can run at a time".into())
++    }
++}
++pub fn diagnostic(window: &mut Window) -> Value {
++    let Some(view) = native(window) else {
++        return json!({"state": "unavailable"});
++    };
++    let text = unsafe { herdr_fleet_status(view) };
++    if text.is_null() {
++        return json!({"state":"unavailable"});
++    }
++    // SAFETY: the bridge returns a freshly allocated, NUL-terminated UTF-8 JSON string.
++    let value = serde_json::from_slice(unsafe { CStr::from_ptr(text).to_bytes() });
++    unsafe { herdr_fleet_free(text) };
++    value.unwrap_or_else(|_| json!({"state":"invalid diagnostic response"}))
++}
++
++#[cfg(test)]
++mod tests {
++    use super::public_id;
++    #[test]
++    fn only_accepts_public_fleet_identifiers() {
++        assert!(public_id("mac-studio:a04a03bc3050410a1b037001"));
++        for wrong in [
++            "",
++            "mac-studio",
++            "x:BAD",
++            "http://127.0.0.1:4749",
++            "x:000000000000000000000000:more",
++            "x]:000000000000000000000000",
++        ] {
++            assert!(!public_id(wrong));
++        }
++    }
++}
+diff --git a/src/main.rs b/src/main.rs
+index 34d47aa..1f3407c 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -34,6 +34,8 @@ mod spawn;
+ mod sprites;
+ mod telemetry;
+ mod feedback;
++#[cfg(target_os = "macos")]
++mod fleet_webview;
+ mod terminal;
+ mod update;
+ mod update_notes;
+diff --git a/src/window.rs b/src/window.rs
+index 6372535..ede456f 100644
+--- a/src/window.rs
++++ b/src/window.rs
+@@ -6,6 +6,8 @@
+
+ use crate::hc::Core;
+ mod floats;
++#[cfg(target_os = "macos")]
++mod fleet;
+ mod movable;
+ mod pane_drag;
+ mod pane_size;
+@@ -392,6 +394,8 @@ pub struct AppWindow {
+     agent: Option<String>,
+     /// The agent view that has the keyboard, so it's only taken on change.
+     agent_focused: Option<String>,
++    #[cfg(target_os = "macos")]
++    mounted_fleet_pane: Option<String>,
+     /// Panes showing another terminal for now (pane → address), e.g. a sub-agent
+     /// looked at in place of its parent. Not saved; the pane keeps its own.
+     swapped: HashMap<String, String>,
+@@ -532,6 +536,8 @@ impl AppWindow {
+             layout_name: "main".into(),
+             agent: None,
+             agent_focused: None,
++            #[cfg(target_os = "macos")]
++            mounted_fleet_pane: None,
+             swapped: HashMap::new(),
+             float_drag: None,
+             pane_drag: None,
+@@ -1283,6 +1289,8 @@ impl AppWindow {
+         let mut terms = Vec::new();
+         let mut mods = Vec::new();
+         let visit = |n: &Node, terms: &mut Vec<(String, String)>, mods: &mut Vec<(String, Instance)>| match n.content() {
++            #[cfg(target_os = "macos")]
++            _ if fleet::is_pane(n) && self.model.space_of(&n.id).is_some_and(|s| s.machine.is_none()) => {}
+             Some(Content::Terminal { terminal }) => terms.push((n.id.clone(), terminal.clone())),
+             Some(Content::Mod { name, props }) => mods.push((n.id.clone(), Instance { name: name.clone(), props: props.clone() })),
+             _ => {}
+@@ -3186,6 +3194,22 @@ impl AppWindow {
+     fn dispatch(&mut self, name: &str, a: &Value, person: bool, window: &mut Window, cx: &mut Context<Self>) {
+         let active_ctx = self.model.active_tab().map(|c| c.id.clone());
+         match name {
++            #[cfg(target_os = "macos")]
++            "habblaud.open" => {
++                let result = self.open_fleet(a, window);
++                self.answer(result);
++            }
++            #[cfg(target_os = "macos")]
++            "habblaud.status" => {
++                self.reply = Some(crate::fleet_webview::diagnostic(window));
++                return;
++            }
++            #[cfg(target_os = "macos")]
++            "habblaud.measure" => {
++                if self.shown_fleet_pane().is_none() { return self.fail("Open the Fleet office before measuring it"); }
++                self.answer(crate::fleet_webview::measure(window).map(|()| json!({"ok": true})));
++                return;
++            }
+             // ---- spaces
+             "space.new" => {
+                 let Some(focus) = Self::focus(a) else { return self.fail("space.new focus is true or false") };
+@@ -4686,6 +4710,20 @@ impl AppWindow {
+     }
+
+     fn render_block(&self, n: &Node, content: &Content, focused: &HashSet<String>, rendered_dividers: &mut HashSet<(String, usize)>, cx: &mut Context<Self>) -> AnyElement {
++        #[cfg(target_os = "macos")]
++        if fleet::is_pane(n) && self.model.space_of(&n.id).is_some_and(|s| s.machine.is_none()) {
++            if self.shown_fleet_pane().as_deref() == Some(n.id.as_str()) {
++                return canvas(|bounds, window, _| {
++                    let clipped = bounds.intersect(&window.content_mask().bounds);
++                    if clipped.size.width > px(0.) && clipped.size.height > px(0.) {
++                        crate::fleet_webview::render(window, clipped);
++                    } else {
++                        crate::fleet_webview::hide(window);
++                    }
++                }, |_, _, _, _| {}).size_full().into_any_element();
++            }
++            return div().size_full().into_any_element();
++        }
+         match content {
+             Content::Terminal { .. } => match self.pane_term(&n.id) {
+                 Some(t) => {
+@@ -5638,6 +5676,8 @@ fn shadow(el: Div, s: Option<&str>) -> Div {
+
+ impl Render for AppWindow {
+     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
++        #[cfg(target_os = "macos")]
++        self.update_fleet_visibility(window);
+         crate::bench::count(&crate::bench::WINDOW);
+         let _timed = crate::bench::timed(&crate::bench::WINDOW_US);
+         crate::bench::frame_start();
+diff --git a/src/window/fleet.rs b/src/window/fleet.rs
+new file mode 100644
+index 0000000..032f777
+--- /dev/null
++++ b/src/window/fleet.rs
+@@ -0,0 +1,178 @@
++//! The native fleet office is a local tab pane. Its persisted mod marker lets a
++//! standard Herdr installation display the Habblaud panel if it opens the same document.
++use super::{AppWindow, Axis, Content, Model, Node, Tab, home};
++use gpui::Window;
++use serde_json::{Value, json};
++
++pub(super) fn is_pane(node: &Node) -> bool {
++    matches!(node.content(), Some(Content::Mod { name, props })
++        if name == "habblaud" && props["native"].as_str() == Some("fleet"))
++}
++
++fn ensure_pane(model: &mut Model, adopt: Option<&str>) -> Result<(String, String, String), String> {
++    if let Some(tab) = adopt {
++        if !model
++            .spaces
++            .iter()
++            .any(|s| s.machine.is_none() && s.tab(tab).is_some())
++        {
++            return Err("habblaud.open requires an existing local tab ID".into());
++        }
++    }
++    let found = model.spaces.iter().filter(|s| s.machine.is_none()).find_map(|s| {
++        s.tabs.iter().find_map(|tab| {
++            tab.root
++                .panes()
++                .into_iter()
++                .find(|p| is_pane(p))
++                .map(|p| (s.id.clone(), tab.id.clone(), p.id.clone()))
++        })
++    });
++    let (space, tab, pane) = if let Some(found) = found {
++        if adopt.is_some_and(|requested| requested != found.1) {
++            return Err("The native Fleet office already belongs to another local tab".into());
++        }
++        found
++    } else {
++        let pane = model.fresh_id("p");
++        let block = Node::block(
++            &pane,
++            Content::Mod {
++                name: "habblaud".into(),
++                props: json!({"native":"fleet"}),
++            },
++        );
++        if let Some(id) = adopt {
++            let tab = model.tab(id).ok_or("No such fleet tab")?;
++            let target = tab.focused_pane().ok_or("The selected tab has no pane")?;
++            let space = model.space_of(id).ok_or("No local fleet space")?.id.clone();
++            if !model.split_with(&target, Axis::Row, block) {
++                return Err("Unable to insert the fleet pane".into());
++            }
++            model.tab_mut(id).expect("adopted tab exists").zoomed = Some(pane.clone());
++            (space, id.to_owned(), pane)
++        } else {
++            let tab = model.fresh_id("tb");
++            let new_tab = Tab::with_pane(&tab, "Fleet office", block);
++            let local = model
++                .active_space()
++                .filter(|s| s.machine.is_none())
++                .or_else(|| model.spaces.iter().find(|s| s.machine.is_none()));
++            let space = if let Some(local) = local {
++                let id = local.id.clone();
++                model.add_tab(&id, new_tab);
++                id
++            } else {
++                let id = model.fresh_id("sp");
++                model.add_space(&id, "Habblaud", &home(), new_tab);
++                id
++            };
++            (space, tab, pane)
++        }
++    };
++    model.select_tab(&tab);
++    model.focus_pane(&pane);
++    Ok((space, tab, pane))
++}
++
++impl AppWindow {
++    pub(super) fn shown_fleet_pane(&self) -> Option<String> {
++        if !self.overlays.is_empty()
++            || !self.float_hover.is_empty()
++            || self.pane_drag.is_some()
++            || self.float_drag.is_some()
++            || !self.shows_tab()
++        {
++            return None;
++        }
++        self.model
++            .active_space()
++            .filter(|s| s.machine.is_none())?
++            .active_tab()?
++            .shown()
++            .visible_blocks()
++            .into_iter()
++            .find(|n| is_pane(n))
++            .map(|n| n.id.clone())
++    }
++
++    pub(super) fn update_fleet_visibility(&mut self, window: &mut Window) {
++        if let Some(pane) = self.shown_fleet_pane() {
++            self.mounted_fleet_pane = Some(pane);
++        } else if let Some(pane) = &self.mounted_fleet_pane {
++            if self
++                .model
++                .tab_of(pane)
++                .is_some_and(|tab| tab.root.find(pane).is_some_and(is_pane))
++            {
++                crate::fleet_webview::hide(window);
++            } else {
++                crate::fleet_webview::detach(window);
++                self.mounted_fleet_pane = None;
++            }
++        }
++    }
++
++    pub(super) fn open_fleet(&mut self, args: &Value, window: &mut Window) -> Result<Value, String> {
++        let string_arg = |key: &str| match args.get(key) {
++            None | Some(Value::Null) => Ok(None),
++            Some(Value::String(s)) => Ok(Some(s.as_str())),
++            _ => Err(format!("habblaud.open expects a string for {key}")),
++        };
++        let agent = string_arg("agent")?;
++        if agent.is_some_and(|id| !crate::fleet_webview::public_id(id)) {
++            return Err("Invalid fleet agent ID".into());
++        }
++        let adopt = string_arg("tab")?;
++        self.require_document(None)?;
++        let (space, tab, pane) = ensure_pane(&mut self.model, adopt)?;
++        crate::fleet_webview::select(window, agent)?;
++        Ok(json!({ "space":space, "tab":tab, "pane":pane, "agent":agent }))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn adoption_preserves_the_terminal_and_reuses_the_fleet_pane_from_a_remote_space() {
++        let mut model = Model::default();
++        model.add_space(
++            "local",
++            "local",
++            "/",
++            Tab::new("tab", "Fleet office", "old", "t1"),
++        );
++        model.add_space(
++            "remote",
++            "peer",
++            "/",
++            Tab::new("other", "Fleet office", "peer-pane", "peer/t1"),
++        );
++        model
++            .spaces
++            .iter_mut()
++            .find(|s| s.id == "remote")
++            .unwrap()
++            .machine = Some("peer".into());
++        assert!(ensure_pane(&mut model, Some("other")).is_err());
++        let selected = ensure_pane(&mut model, Some("tab")).unwrap();
++        assert_eq!(model.address_of("old").as_deref(), Some("t1"));
++        assert_eq!(model.tab("tab").unwrap().shown().id, selected.2);
++        model.select_tab("other");
++        assert_eq!(ensure_pane(&mut model, None).unwrap(), selected);
++        assert_eq!(model.active_tab().unwrap().id, "tab");
++        assert_eq!(model.tab("tab").unwrap().root.panes().len(), 2);
++    }
++
++    #[test]
++    fn opening_with_no_spaces_makes_one_local_fleet_tab() {
++        let mut model = Model::default();
++        let first = ensure_pane(&mut model, None).unwrap();
++        assert_eq!(ensure_pane(&mut model, None).unwrap(), first);
++        assert_eq!(model.spaces.len(), 1);
++        assert_eq!(model.tabs().count(), 1);
++        assert!(model.active_tab().unwrap().root.terminals().is_empty());
++    }
++}
